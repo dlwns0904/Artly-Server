@@ -33,6 +33,8 @@ class ArtistController {
      *   ),
      *   @OA\Parameter(name="liked_only", in="query", description="좋아요한 작가만", @OA\Schema(type="boolean")),
      *   @OA\Parameter(name="search", in="query", description="검색어", @OA\Schema(type="string")),
+     *   @OA\Parameter(name="nation", in="query", description="국가 필터", @OA\Schema(type="string")),
+     *   @OA\Parameter(name="decade", in="query", description="년도 (예: 1920년대)", @OA\Schema(type="string")),
      *   @OA\Response(
      *     response=200, description="성공",
      *     @OA\JsonContent(type="array", @OA\Items(
@@ -59,7 +61,9 @@ class ArtistController {
             'category'   => $_GET['category'] ?? 'all',
             'liked_only' => $likedOnly,
             'user_id'    => $user_id,
-            'search'     => $_GET['search'] ?? null
+            'search'     => $_GET['search'] ?? null,
+            'nation'     => $_GET['nation'] ?? null,
+            'decade'     => $_GET['decade'] ?? null
         ];
 
         $artists = $this->model->fetchArtists($filters);

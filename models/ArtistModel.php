@@ -17,6 +17,8 @@ class ArtistModel {
     $likedOnly = !empty($filters['liked_only']) && filter_var($filters['liked_only'], FILTER_VALIDATE_BOOLEAN);
     $search = $filters['search'] ?? null;
     $category = $filters['category'] ?? 'all';
+    $nation = $filters['nation'] ?? null;
+    $decade = $filters['decade'] ?? null;
 
     $sql = "
         SELECT
@@ -70,6 +72,21 @@ class ArtistModel {
         $sql .= " AND a.artist_name LIKE :search";
         $params[':search'] = '%' . $search . '%';
     }
+
+
+
+    // nation 필터
+    if (!empty($nation) && $nation !== '전체') {
+        $sql .= " AND a.artist_nation = :nation";
+        $params[':nation'] = $nation;
+    }
+
+    // decade 필터
+    if (!empty($decade) && $decade !== '전체') {
+        $sql .= " AND a.artist_decade = :decade";
+        $params[':decade'] = $decade;
+    }
+
 
     $stmt = $this->pdo->prepare($sql);
     $stmt->execute($params);

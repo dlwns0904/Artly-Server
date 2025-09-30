@@ -446,6 +446,22 @@
                         "schema": {
                             "type": "string"
                         }
+                    },
+                    {
+                        "name": "nation",
+                        "in": "query",
+                        "description": "국가 필터",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "decade",
+                        "in": "query",
+                        "description": "년도 (예: 1920년대)",
+                        "schema": {
+                            "type": "string"
+                        }
                     }
                 ],
                 "responses": {

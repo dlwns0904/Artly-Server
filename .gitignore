@@ -2,3 +2,5 @@ vendor/
 .env
 vendor_backup_*
 
+
+config.php
