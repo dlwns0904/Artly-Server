@@ -15,7 +15,7 @@ class GalleryModel {
     public function create($data) {
         $sql = "INSERT INTO APIServer_gallery (
             gallery_name, gallery_image, gallery_address, gallery_start_time,
-            gallery_end_time, gallery_closed_day, gallery_category, gallery_description, gallery_latitude, gallery_longitude
+            gallery_end_time, gallery_closed_day, gallery_category, gallery_description, gallery_latitude, gallery_longitude, user_id
         ) VALUES (
             :name, :image, :address, :start_time,
             :end_time, :closed_day, :category, :description, :latitude, :longitude
@@ -31,7 +31,8 @@ class GalleryModel {
             ':category' => $data['gallery_category'],
             ':description' => $data['gallery_description'],
             ':latitude' => $data['gallery_latitude'] ?? null,
-            ':longitude' => $data['gallery_longitude'] ?? null
+            ':longitude' => $data['gallery_longitude'] ?? null,
+	    ':user_id'     => $data['user_id'] ?? null, // 임시로 NULL 허용
         ]);
 
         $id = $this->pdo->lastInsertId();
@@ -80,6 +81,8 @@ class GalleryModel {
                 g.gallery_longitude,
                 g.gallery_address,
                 g.gallery_category,
+		g.gallery_start_time,
+		g.gallery_end_time,
                 IFNULL(lc.like_count, 0) AS like_count,
                 IF(EXISTS (
                     SELECT 1 FROM APIServer_gallery_like l
@@ -161,6 +164,8 @@ class GalleryModel {
                 'gallery_address' => $row['gallery_address'],
                 'gallery_category' => $row['gallery_category'],
                 'like_count' => (int)$row['like_count'],
+		'gallery_start_time' => $row['gallery_start_time'],
+		'gallery_end_tiem' => $row['gallery_end_time'],
                 'is_liked' => (bool)$row['is_liked'],
             ];
         }
