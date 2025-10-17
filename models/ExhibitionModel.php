@@ -53,9 +53,14 @@ class ExhibitionModel {
         $sql .= "AND (" . implode(" OR ", $regionConditions) . ") ";
     }
     if (!empty($filters['search'])) {
-    $sql .= " AND A.exhibition_title LIKE :search ";
-    $params[':search'] = '%' . $filters['search'] . '%';
-}
+        $sql .= " AND A.exhibition_title LIKE :search ";
+        $params[':search'] = '%' . $filters['search'] . '%';
+    }
+
+    if (!empty($filters['gallery_id'])) {
+        $sql .= " AND A.gallery_id = :gallery_id ";
+        $params[':gallery_id'] = $filters['gallery_id'];
+    }
 
     $likedOnly = !empty($filters['liked_only']) && filter_var($filters['liked_only'], FILTER_VALIDATE_BOOLEAN);
     if ($likedOnly && !empty($user_id)) {

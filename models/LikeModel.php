@@ -94,4 +94,32 @@ class LikeModel {
         $stmt->execute([':id' => $likedId]);
         return $stmt->fetchColumn() > 0;
     }
+
+    public function getAll($likedType = null) {
+        $allowedTables = [
+            'gallery' => 'APIServer_gallery_like',
+            'exhibition' => 'APIServer_exhibition_like',
+            'artist' => 'APIServer_artist_like',
+            'art' => 'APIServer_art_like'
+        ];
+        $allowedColumn = [
+            'gallery' => 'gallery_id',
+            'exhibition' => 'exhibition_id',
+            'artist' => 'artist_id',
+            'art' => 'art_id'
+        ];
+    
+        if (is_null($likedType) || !array_key_exists($likedType, $allowedTables)) {
+            return []; // 요청대로 아무것도 반환하지 않습니다.
+        }
+    
+        $tableName = $allowedTables[$likedType];
+
+        $sql = "SELECT * FROM {$tableName}";
+    
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute();
+        
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
 }
