@@ -14,8 +14,20 @@ class ArtModel {
     }
 
     public function getAll($filters = []) {
-        $stmt = $this->pdo->prepare("SELECT * FROM APIServer_art");
-        $stmt->execute();
+        $sql = "SELECT *
+                FROM APIServer_art A
+                WHERE 1=1 ";
+
+        $params = [];
+
+        if (!empty($filter['exhibition_id'])) {
+            $sql .= "AND A.exhibition_id = :exhibition_id ";
+            $params[':exhibition_id'] = $filters['exhibition_id'];
+        }
+
+        $stmt = $this->pdo->prepare($sql);
+
+        $stmt->execute($params);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
