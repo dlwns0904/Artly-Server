@@ -41,7 +41,18 @@ class ExhibitionConsoleController {
      * description="성공적인 조회",
      * @OA\JsonContent(
      * type="array",
-     * @OA\Items(ref="#/components/schemas/Exhibition")
+     * @OA\Items(
+     * type="object",
+     * @OA\Property(property="id", type="integer", description="전시회 ID", example=1),
+     * @OA\Property(property="gallery_id", type="integer", description="갤러리 ID", example=5),
+     * @OA\Property(property="title", type="string", description="전시회 제목", example="빛의 예술"),
+     * @OA\Property(property="description", type="string", description="전시회 설명", example="빛을 주제로 한 다양한 작품들을 선보입니다."),
+     * @OA\Property(property="start_date", type="string", format="date-time", description="전시 시작일"),
+     * @OA\Property(property="end_date", type="string", format="date-time", description="전시 종료일"),
+     * @OA\Property(property="status", type="string", description="전시 상태 (예: 'upcoming', 'ongoing', 'finished')", example="ongoing"),
+     * @OA\Property(property="created_at", type="string", format="date-time", description="생성 시간"),
+     * @OA\Property(property="updated_at", type="string", format="date-time", description="마지막 수정 시간")
+     * )
      * )
      * ),
      * @OA\Response(response=401, description="인증 실패 (관리자 권한 필요)"),
