@@ -30,12 +30,24 @@ class GalleryConsoleController {
      * @OA\Response(
      * response=200,
      * description="성공적인 조회",
-     * @OA\JsonContent(type="array", @OA\Items(ref="#/components/schemas/Gallery"))
+     * @OA\JsonContent(
+     * type="array",
+     * @OA\Items(
+     * type="object",
+     * @OA\Property(property="id", type="integer", description="갤러리 ID", example=1),
+     * @OA\Property(property="user_id", type="integer", description="사용자 ID", example=12),
+     * @OA\Property(property="name", type="string", description="갤러리 이름", example="My First Gallery"),
+     * @OA\Property(property="description", type="string", description="갤러리 상세 설명", example="This is a collection of my favorite pieces."),
+     * @OA\Property(property="is_default", type="boolean", description="기본 갤러리 여부", example=true),
+     * @OA\Property(property="created_at", type="string", format="date-time", description="생성 시간"),
+     * @OA\Property(property="updated_at", type="string", format="date-time", description="마지막 수정 시간")
+     * )
+     * )
      * ),
      * @OA\Response(response=401, description="인증 실패 (관리자 권한 필요)"),
      * @OA\Response(response=500, description="서버 오류")
      * )
-    */ 
+     */ 
     public function getGalleryList() {
         try {
             // 관리자 인증 및 사용자 ID 확보

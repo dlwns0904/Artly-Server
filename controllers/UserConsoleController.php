@@ -43,7 +43,18 @@ class UserConsoleController {
      * @OA\Response(
      * response=200,
      * description="성공적인 조회",
-     * @OA\JsonContent(type="array", @OA\Items(type="object"))
+     * @OA\JsonContent(
+     * type="array",
+     * @OA\Items(
+     * type="object",
+     * @OA\Property(property="like_id", type="integer", description="좋아요 ID", example=1),
+     * @OA\Property(property="user_id", type="integer", description="사용자 ID", example=10),
+     * @OA\Property(property="user_name", type="string", description="사용자 이름", example="홍길동"),
+     * @OA\Property(property="liked_item_id", type="integer", description="좋아요 대상 아이템의 ID", example=5),
+     * @OA\Property(property="liked_item_title", type="string", description="좋아요 대상 아이템의 제목", example="빛의 갤러리"),
+     * @OA\Property(property="created_at", type="string", format="date-time", description="좋아요 누른 시간")
+     * )
+     * )
      * ),
      * @OA\Response(response=400, description="필수 파라미터 누락 또는 잘못된 타입"),
      * @OA\Response(response=401, description="인증 실패 (관리자 권한 필요)"),
@@ -76,10 +87,12 @@ class UserConsoleController {
 
             // 데이터 조회
             $likedItems = $this->likeModel->getAll($likedType);
+            $results = [];
 
-            // search 파라미터가 있을 경우, 데이터 필터링
+            // search 파라미터가 있을 경우에만 데이터 필터링
             if (!empty($searchTerm)) {
-                $finalResult = array_filter($likedItems, function($item) use ($searchTerm) {
+                $results = array_filter($likedItems, function($item) use ($searchTerm) {
+                    // item의 모든 string 값에 대해 검색어 포함 여부 확인
                     foreach ($item as $value) {
                         if (is_string($value) && stripos($value, $searchTerm) !== false) {
                             return true; 
@@ -87,14 +100,15 @@ class UserConsoleController {
                     }
                     return false;
                 });
-                $finalResult = array_values($finalResult);
+                // 인덱스를 재정렬 (0부터 시작하도록)
+                $results = array_values($results);
             } else {
-                // 검색어가 없으면 결과는 없다ㅋ
-                $finalResult = [];
+                // 검색어가 없으면 전체 결과를 반환
+                $results = $likedItems;
             }
 
             header('Content-Type: application/json');
-            echo json_encode($finalResult, JSON_UNESCAPED_UNICODE);
+            echo json_encode($results, JSON_UNESCAPED_UNICODE);
 
         } catch (\Exception $e) {
             http_response_code(500);

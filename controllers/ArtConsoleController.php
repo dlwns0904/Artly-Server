@@ -45,7 +45,18 @@ class ArtConsoleController {
      * description="성공적인 조회",
      * @OA\JsonContent(
      * type="array",
-     * @OA\Items(ref="#/components/schemas/Art")
+     * @OA\Items(
+     * type="object",
+     * @OA\Property(property="id", type="integer", description="작품 ID", example=101),
+     * @OA\Property(property="exhibition_id", type="integer", description="전시회 ID", example=1),
+     * @OA\Property(property="artist_name", type="string", description="작가 이름", example="빈센트 반 고흐"),
+     * @OA\Property(property="title", type="string", description="작품 제목", example="별이 빛나는 밤"),
+     * @OA\Property(property="description", type="string", description="작품 설명", example="고흐의 대표작 중 하나로..."),
+     * @OA\Property(property="image_url", type="string", format="uri", description="작품 이미지 URL"),
+     * @OA\Property(property="year", type="integer", description="제작 연도", example=1889),
+     * @OA\Property(property="created_at", type="string", format="date-time", description="생성 시간"),
+     * @OA\Property(property="updated_at", type="string", format="date-time", description="마지막 수정 시간")
+     * )
      * )
      * ),
      * @OA\Response(response=401, description="인증 실패 (관리자 권한 필요)"),
