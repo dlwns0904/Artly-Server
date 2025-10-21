@@ -8,10 +8,14 @@ $dotenv->load();
 
 use Controllers\ArtistController;
 use Controllers\ExhibitionController;
+use Controllers\ExhibitionConsoleController;
 use Controllers\ArtController;
+use Controllers\ArtConsoleController;
 use Controllers\GalleryController;
+use Controllers\GalleryConsoleController;
 use Controllers\AnnouncementController;
 use Controllers\UserController;
+use Controllers\UserConsoleController;
 use Controllers\AuthController;
 use Controllers\SearchController;
 use Controllers\ReservationController;
@@ -70,6 +74,13 @@ elseif ($requestMethod === 'POST' && preg_match('#^/api/exhibitions/(\d+)/arts$#
     (new ExhibitionController())->registerArts($m[1]);
 }
 
+
+/* ───────────────────────── ExhibitionConsole ───────────────────────── */
+elseif ($requestMethod === 'GET' && preg_match('#^/api/console/exhibitions$#', $requestUri)) {
+    (new ExhibitionConsoleController())->getExhibitionList();
+}
+
+
 /* ───────────────────────── Art ───────────────────────── */
 
 elseif ($requestMethod === 'GET' && preg_match('#^/api/arts/(\d+)$#', $requestUri, $m)) {
@@ -89,6 +100,12 @@ elseif ($requestMethod === 'DELETE' && preg_match('#^/api/arts/(\d+)$#', $reques
 }
 
 
+/* ───────────────────────── ArtConsole ───────────────────────── */
+elseif ($requestMethod === 'GET' && preg_match('#^/api/console/arts$#', $requestUri)) {
+    (new ArtConsoleController())->getArtList();
+}
+
+
 /* ───────────────────────── Gallery ───────────────────────── */
 
 elseif ($requestMethod === 'GET' && preg_match('#^/api/galleries/(\d+)$#', $requestUri, $m)) {
@@ -105,6 +122,12 @@ elseif ($requestMethod === 'PUT' && preg_match('#^/api/galleries/(\d+)$#', $requ
 }
 elseif ($requestMethod === 'DELETE' && preg_match('#^/api/galleries/(\d+)$#', $requestUri, $m)) {
     (new GalleryController())->deleteGallery($m[1]);
+}
+
+
+/* ───────────────────────── GalleryConsole ───────────────────────── */
+elseif ($requestMethod === 'GET' && preg_match('#^/api/console/galleries$#', $requestUri)) {
+    (new GalleryConsoleController())->getGalleryList();
 }
 
 
@@ -149,6 +172,14 @@ elseif ($requestMethod === 'GET' && $requestUri === '/api/users/me/purchases') {
 elseif ($requestMethod === 'GET' && $requestUri === '/api/users/me/likes') {
     (new UserController())->getMyLikes();
 }
+
+
+/* ───────────────────────── UserConsole ───────────────────────── */
+elseif ($requestMethod === 'GET' && preg_match('#^/api/console/users/likes$#', $requestUri)) {
+    (new UserConsoleController())->getLikedUserList();
+}
+
+
 /* ───────────────────────── Search ───────────────────────── */
 
 elseif ($requestMethod === 'GET' && $requestUri === '/api/search') {
