@@ -4,6 +4,10 @@ namespace Controllers;
 use OpenApi\Annotations as OA;
 use Middlewares\AuthMiddleware;
 use Models\LikeModel;
+use Models\UserModel;
+use Models\GalleryModel;
+use Models\ExhibitionModel;
+use Models\ArtModel;
 
 /**
  * @OA\Tag(
@@ -14,10 +18,18 @@ use Models\LikeModel;
 class UserConsoleController {
     private $authMiddleware;
     private $likeModel;
+    private $userModel;
+    private $galleryModel;
+    private $exhibitionModel;
+    private $artModel;
 
     public function __construct() {
         $this->authMiddleware = new AuthMiddleware();
         $this->likeModel = new LikeModel();
+        $this->userModel = new UserModel();
+        $this->galleryModel = new GalleryModel();
+        $this->exhibitionModel = new ExhibitionModel();
+        $this->artModel = new ArtModel();
     }
 
     /**
@@ -106,6 +118,44 @@ class UserConsoleController {
                 // 검색어가 없으면 전체 결과를 반환
                 $results = $likedItems;
             }
+
+            foreach ($results as &$item) {
+                // 공통 : user_id를 바탕으로 userModel의 getById를 바탕으로 새로운 user필드에 조회한 정보 추가
+                if (!empty($item['user_id'])) {
+                    $item['user'] = $this->userModel->getById($item['user_id']);
+                } else {
+                    $item['user'] = null;
+                }
+
+                // $likedType에 따라 적절한 모델을 사용하여 상세 정보 추가
+                switch ($likedType) {
+                    case 'gallery':
+                        // gallery -> gallery_id를 바탕으로 galleryModel의 getById를 바탕으로 새로운 gallery 필드에 조회한 정보 추가
+                        if (!empty($item['gallery_id'])) {
+                            $item['gallery'] = $this->galleryModel->getById($item['gallery_id']);
+                        } else {
+                            $item['gallery'] = null;
+                        }
+                        break;
+                    case 'exhibition':
+                        // exhibition -> exhibition_id를 바탕으로 exhibitionModel의 getById를 바탕으로 새로운 exhibition 필드에 조회한 정보 추가
+                        if (!empty($item['exhibition_id'])) {
+                            $item['exhibition'] = $this->exhibitionModel->getById($item['exhibition_id']);
+                        } else {
+                            $item['exhibition'] = null;
+                        }
+                        break;
+                    case 'art':
+                        // art -> art_id를 바탕으로 artModel의 getById를 바탕으로 새로운 art 필드에 조회한 정보 추가
+                        if (!empty($item['art_id'])) {
+                            $item['art'] = $this->artModel->getById($item['art_id']);
+                        } else {
+                            $item['art'] = null;
+                        }
+                        break;
+                }
+            }
+            unset($item);
 
             header('Content-Type: application/json');
             echo json_encode($results, JSON_UNESCAPED_UNICODE);

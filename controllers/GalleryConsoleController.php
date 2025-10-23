@@ -65,7 +65,7 @@ class GalleryConsoleController {
             // 각 갤러리의 상세 정보를 조회
             $allGalleriesWithDetails = [];
             foreach ($galleries as $gallery) {
-                $galleryInfo = $this->galleryModel->getByGalleryID($gallery['id']);
+                $galleryInfo = $this->galleryModel->getById($gallery['id']);
                 if ($galleryInfo) {
                     $allGalleriesWithDetails[] = $galleryInfo;
                 }
