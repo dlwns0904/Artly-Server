@@ -6,6 +6,7 @@ use Middlewares\AuthMiddleware;
 use Models\GalleryModel;
 use Models\ExhibitionModel;
 use Models\ArtModel;
+use Models\ArtistModel;
 
 
 /**
@@ -19,12 +20,14 @@ class ArtConsoleController {
     private $galleryModel;
     private $exhibitionModel;
     private $artModel;
+    private $artistModel;
 
     public function __construct() {
         $this->authMiddleware = new AuthMiddleware();
         $this->galleryModel = new GalleryModel();
         $this->exhibitionModel = new ExhibitionModel();
         $this->artModel = new ArtModel();
+        $this->artistModel = new ArtistModel();
     }
 
     /**
@@ -91,6 +94,23 @@ class ArtConsoleController {
             $allArts = [];
             foreach ($exhibitions as $exhibition) {
                 $artsForOneExhibition = $this->artModel->getAll(['exhibition_id' => $exhibition['id']]);
+             
+                foreach ($artsForOneExhibition as &$art) { // '$art'를 참조(&)로 받음
+                    // "artist_id" 필드의 값을 갖고
+                    if (!empty($art['artist_id'])) {
+                        // artistModel의 getById를 이용해서
+                        $artistData = $this->artistModel->getById($art['artist_id']);
+                        
+                        // $art의 'artist'라는 새로운 필드에 저장하기
+                        $art['artist'] = $artistData;
+                    } else {
+                        // artist_id가 없는 경우 처리
+                        $art['artist'] = null;
+                    }
+                }
+                // 참조 해제
+                unset($art);
+
                 $allArts = array_merge($allArts, $artsForOneExhibition);
             }
 
