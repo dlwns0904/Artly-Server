@@ -91,11 +91,11 @@ public function getAnnouncements($filters = [])
 {
     /* 기본 SELECT 절 ------------------------------------------------------ */
     $sql = "SELECT  id,
-                    announcement_title           AS title,
-                    announcement_start_datetime  AS start_datetime,
-                    announcement_end_datetime    AS end_datetime,
-                    announcement_organizer       AS organizer,
-                    announcement_category        AS category,
+                    announcement_title,
+                    announcement_start_datetime,
+                    announcement_end_datetime,
+                    announcement_organizer,
+                    announcement_category,
                     announcement_status
             FROM    APIServer_announcement
             WHERE   1=1";
