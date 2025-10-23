@@ -4,6 +4,7 @@ namespace Controllers;
 use OpenApi\Annotations as OA;
 use Middlewares\AuthMiddleware;
 use Models\GalleryModel;
+use Models\ExhibitionModel;
 
 /**
  * @OA\Tag(
@@ -14,10 +15,13 @@ use Models\GalleryModel;
 class GalleryConsoleController {
     private $authMiddleware;    
     private $galleryModel;
+    private $exhibitionModel;
+
 
     public function __construct() {
         $this->authMiddleware = new AuthMiddleware();
         $this->galleryModel = new GalleryModel();
+        $this->exhibitionModel = new ExhibitionModel();
     }
 
     /**
@@ -65,7 +69,7 @@ class GalleryConsoleController {
             // 각 갤러리의 상세 정보를 조회
             $allGalleriesWithDetails = [];
             foreach ($galleries as $gallery) {
-                $galleryInfo = $this->galleryModel->getById($gallery['id']);
+                $galleryInfo = $this->galleryModel->getById($gallery['id'], $user_id);
                 if ($galleryInfo) {
                     $allGalleriesWithDetails[] = $galleryInfo;
                 }
@@ -78,6 +82,99 @@ class GalleryConsoleController {
             http_response_code(500);
             error_log($e->getMessage());
             echo json_encode(['message' => '서버 오류가 발생했습니다.']);
+        }
+    }
+
+    /**
+     * @OA\Get(
+     * path="/api/console/galleries/{id}",
+     * summary="[콘솔] 갤러리 상세 조회",
+     * description="특정 갤러리의 상세 정보와 해당 갤러리에서 진행 중인/진행 예정인 전시 목록을 함께 조회합니다.",
+     * tags={"GalleryConsole"},
+     * security={{"bearerAuth":{}}},
+     * @OA\Parameter(
+     * name="id", 
+     * in="path", 
+     * required=true, 
+     * @OA\Schema(type="integer", example=1), 
+     * description="조회할 갤러리 ID"
+     * ),
+     * * // --- 200 OK 응답 스키마 ---
+     * @OA\Response(
+     * response=200, 
+     * description="상세 조회 성공",
+     * @OA\JsonContent(
+     * type="object",
+     * description="갤러리 상세 정보 및 전시 목록",
+     * * // ===========================================
+     * // (1) 갤러리(Gallery)의 기본 프로퍼티
+     * // ===========================================
+     * @OA\Property(property="gallery_name", type="string"),
+     * @OA\Property(property="gallery_image", type="string"),
+     * @OA\Property(property="gallery_address", type="string"),
+     * @OA\Property(property="gallery_start_time", type="string"),
+     * @OA\Property(property="gallery_end_time", type="string"),
+     * @OA\Property(property="gallery_closed_day", type="string"),
+     * @OA\Property(property="gallery_category", type="string"),
+     * @OA\Property(property="gallery_description", type="string"),
+     * @OA\Property(property="gallery_latitude", type="number", format="float"),
+     * @OA\Property(property="gallery_longitude", type="number", format="float")
+     * @OA\Property(property="gallery_phone", type="string")
+     * @OA\Property(property="gallery_email", type="string")
+     * @OA\Property(property="gallery_homepage", type="string")
+     * @OA\Property(property="gallery_sns", type="string")
+     * * // ===========================================
+     * // (2) 갤러리에 포함된 전시(Exhibition) 배열 프로퍼티
+     * // ===========================================
+     * @OA\Property(
+     * property="exhibitions",
+     * type="array",
+     * description="해당 갤러리의 전시 목록",
+     * @OA\Items(
+     * type="object",
+     * description="전시 정보",
+     * * // --- 'exhibitions' 배열 안의 객체 프로퍼티 ---
+     * @OA\Property(property="id", type="integer", example=101, description="전시 ID"),
+     * @OA\Property(property="title", type="string", example="빛의 향연", description="전시 제목"),
+     * @OA\Property(property="start_date", type="string", format="date", example="2025-11-01", description="전시 시작일"),
+     * @OA\Property(property="end_date", type="string", format="date", example="2025-11-30", description="전시 종료일"),
+     * @OA\Property(property="status", type="string", example="upcoming", description="전시 상태 (upcoming, current, past)")
+     * )
+     * )
+     * )
+     * ),
+     * * // --- 404 Not Found 응답 스키마 ---
+     * @OA\Response(
+     * response=404, 
+     * description="갤러리 없음", 
+     * @OA\JsonContent(
+     * type="object",
+     * @OA\Property(property="message", type="string", example="Gallery not found")
+     * )
+     * )
+     * )
+     */
+    public function getGalleryById($id) {
+        $decoded = $this->authMiddleware->requireAdmin();
+        $user_id = $decoded->sub;
+
+        $gallery = $this->galleryModel->getById($id, $user_id);
+
+        if ($gallery) {
+            $filters = ['gallery_id' => $id];
+            $exhibitions = $this->exhibitionModel->getExhibitions($filters);
+
+            if (is_object($gallery)) {
+                $gallery->exhibitions = $exhibitions;
+            } elseif (is_array($gallery)) {
+                $gallery['exhibitions'] = $exhibitions;
+            }
+
+            header('Content-Type: application/json');
+            echo json_encode($gallery, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
+        } else {
+            http_response_code(404);
+            echo json_encode(['message' => 'Gallery not found']);
         }
     }
 }

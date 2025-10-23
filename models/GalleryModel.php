@@ -81,8 +81,12 @@ class GalleryModel {
                 g.gallery_longitude,
                 g.gallery_address,
                 g.gallery_category,
-		g.gallery_start_time,
-		g.gallery_end_time,
+                g.gallery_start_time,
+                g.gallery_end_time,
+                g.gallery_phone,
+                g.gallery_email,
+                g.gallery_homepage,
+                g.gallery_sns,
                 IFNULL(lc.like_count, 0) AS like_count,
                 IF(EXISTS (
                     SELECT 1 FROM APIServer_gallery_like l
@@ -164,9 +168,13 @@ class GalleryModel {
                 'gallery_address' => $row['gallery_address'],
                 'gallery_category' => $row['gallery_category'],
                 'like_count' => (int)$row['like_count'],
-		'gallery_start_time' => $row['gallery_start_time'],
-		'gallery_end_tiem' => $row['gallery_end_time'],
+                'gallery_start_time' => $row['gallery_start_time'],
+                'gallery_end_tiem' => $row['gallery_end_time'],
                 'is_liked' => (bool)$row['is_liked'],
+                'gallery_phone' => $row['gallery_phone'],
+                'gallery_email' => $row['gallery_email'],
+                'gallery_homepage' => $row['gallery_homepage'],
+                'gallery_sns' => $row['gallery_sns'],
             ];
         }
 
@@ -187,6 +195,10 @@ class GalleryModel {
             g.gallery_description,
             g.gallery_latitude,
             g.gallery_longitude,
+            g.gallery_phone,
+            g.gallery_email,
+            g.gallery_homepage,
+            g.gallery_sns,
             IFNULL(lc.like_count, 0) AS like_count,
             IF(EXISTS (
                 SELECT 1 FROM APIServer_gallery_like l
@@ -231,6 +243,10 @@ class GalleryModel {
         'gallery_description' => $firstRow['gallery_description'],
         'gallery_latitude' => $firstRow['gallery_latitude'],
         'gallery_longitude' => $firstRow['gallery_longitude'],
+        'gallery_phone' => $row['gallery_phone'],
+        'gallery_email' => $row['gallery_email'],
+        'gallery_homepage' => $row['gallery_homepage'],
+        'gallery_sns' => $row['gallery_sns'],
         'like_count' => (int)$firstRow['like_count'],
         'is_liked' => (bool)$firstRow['is_liked'],
         'exhibitions' => []
