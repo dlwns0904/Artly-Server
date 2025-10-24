@@ -124,6 +124,98 @@ class ArtConsoleController {
         }
     }
 
+    /**
+     * @OA\Get(
+     * path="/api/console/arts/{id}",
+     * summary="[콘솔] 작품 상세 조회",
+     * description="특정 작품의 상세 정보와 이 작품이 전시된(또는 전시될) 전시 목록을 함께 조회합니다.",
+     * tags={"ArtConsole"},
+     * security={{"bearerAuth":{}}},
+     * @OA\Parameter(
+     * name="id", 
+     * in="path", 
+     * required=true, 
+     * @OA\Schema(type="integer", example=1), 
+     * description="조회할 작품 ID"
+     * ),
+     * * // --- 200 OK 응답 스키마 ---
+     * @OA\Response(
+     * response=200, 
+     * description="상세 조회 성공",
+     * @OA\JsonContent(
+     * type="object",
+     * description="작품 상세 정보 및 전시 목록(아직 프로퍼티명 수정 X)",
+     * * // ===========================================
+     * // (1) 작품(Art)의 기본 프로퍼티
+     * // ===========================================
+     * @OA\Property(property="id", type="integer", example=1, description="작품 ID"),
+     * @OA\Property(property="title", type="string", example="별이 빛나는 밤", description="작품 제목"),
+     * @OA\Property(property="artist_name", type="string", example="빈센트 반 고흐", description="작가명"),
+     * @OA\Property(property="description", type="string", example="1889년에 제작된 유화...", description="작품 설명"),
+     * @OA\Property(property="image_url", type="string", format="uri", example="https://.../starry_night.jpg"),
+     * * // ===========================================
+     * // (2) 작품에 포함된 전시(Exhibition) 배열 프로퍼티
+     * // ===========================================
+     * @OA\Property(
+     * property="exhibitions",
+     * type="array",
+     * description="이 작품이 포함된 전시 목록",
+     * @OA\Items(
+     * type="object",
+     * description="작품이 속한 전시회 정보",
+     * @OA\Property(property="id", type="integer", example=101, description="전시 ID"),
+     * @OA\Property(property="title", type="string", example="빛의 향연", description="전시 제목"),
+     * @OA\Property(property="start_date", type="string", format="date", example="2025-11-01"),
+     * @OA\Property(property="end_date", type="string", format="date", example="2025-11-30")
+     * )
+     * )
+     * )
+     * ),
+     * * // --- 404 Not Found 응답 스키마 ---
+     * @OA\Response(
+     * response=404, 
+     * description="작품 없음", 
+     * @OA\JsonContent(
+     * type="object",
+     * @OA\Property(property="message", type="string", example="Art not found")
+     * )
+     * )
+     * )
+     */
+    public function getArtById($id) {
+        $this->authMiddleware->requireAdmin();
+
+        $art = $this->artModel->getById($id);
+
+        if ($art) {
+            $exhibitionIds = $this->artModel->getExhibitionIdByArtId($id);
+
+            $exhibitions = [];
+
+            foreach ($exhibitionIds as $exhibitionId) {
+                $exhibitionDetail = $this.exhibitionModel->getById($exhibitionId); 
+                
+                if ($exhibitionDetail) {
+                    $exhibitions[] = $exhibitionDetail;
+                }
+            }
+
+            if (is_object($art)) {
+                $art->exhibitions = $exhibitions;
+            } elseif (is_array($art)) {
+                $art['exhibitions'] = $exhibitions;
+            }
+
+            header('Content-Type: application/json');
+            echo json_encode($art, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
+
+        } else {
+            http_response_code(404);
+            header('Content-Type: application/json');
+            echo json_encode(['message' => 'Art not found']);
+        }
+    }
+
 
 
     

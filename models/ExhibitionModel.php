@@ -294,6 +294,7 @@ class ExhibitionModel {
     // 5️⃣ 최종 결과 조립
     return [
     "id" => (int)$exhibition['id'],
+    "gallery_id" => $exhibition['gallery_id'],
     "exhibition_title" => $exhibition['exhibition_title'],
     "exhibition_poster" => $exhibition['exhibition_poster'],
     "exhibition_category" => $exhibition['exhibition_category'],

@@ -33,23 +33,36 @@ class ArtModel {
 
 
     public function getById($id) {
-    $stmt = $this->pdo->prepare("
-        SELECT 
-            a.*, 
-            ar.artist_name 
-        FROM 
-            APIServer_art a
-        LEFT JOIN 
-            APIServer_artist ar 
-        ON 
-            a.artist_id = ar.id
-        WHERE 
-            a.id = :id
-    ");
-    $stmt->execute(['id' => $id]);
-    return $stmt->fetch(PDO::FETCH_ASSOC);
-}
+        $stmt = $this->pdo->prepare("
+            SELECT 
+                a.*, 
+                ar.artist_name 
+            FROM 
+                APIServer_art a
+            LEFT JOIN 
+                APIServer_artist ar 
+            ON 
+                a.artist_id = ar.id
+            WHERE 
+                a.id = :id
+        ");
+        $stmt->execute(['id' => $id]);
+        return $stmt->fetch(PDO::FETCH_ASSOC);
+    }
 
+
+    public function getExhibitionIdByArtId($id) {
+        $stmt = $this->pdo->prepare("
+            SELECT
+                ea.exhibition_id
+            FROM
+                APIServer_exhibition_art ea
+            WHERE
+                ea.art_id = :id
+        ");
+        $stmt->execute(['id' => $id]);
+        return $stmt->fetch(PDO::FETCH_ASSOC);
+    }
 
 
     public function create($data) {

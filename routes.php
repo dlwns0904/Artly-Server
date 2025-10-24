@@ -79,7 +79,9 @@ elseif ($requestMethod === 'POST' && preg_match('#^/api/exhibitions/(\d+)/arts$#
 elseif ($requestMethod === 'GET' && preg_match('#^/api/console/exhibitions$#', $requestUri)) {
     (new ExhibitionConsoleController())->getExhibitionList();
 }
-
+elseif ($requestMethod === 'GET' && preg_match('#^/api/console/exhibitions/(\d+)$#', $requestUri, $m)) {
+    (new ExhibitionConsoleController())->getExhibitionById($m[1]);
+}
 
 /* ───────────────────────── Art ───────────────────────── */
 
@@ -104,7 +106,9 @@ elseif ($requestMethod === 'DELETE' && preg_match('#^/api/arts/(\d+)$#', $reques
 elseif ($requestMethod === 'GET' && preg_match('#^/api/console/arts$#', $requestUri)) {
     (new ArtConsoleController())->getArtList();
 }
-
+elseif ($requestMethod === 'GET' && preg_match('#^/api/console/arts/(\d+)$#', $requestUri, $m)) {
+    (new ArtConsoleController())->getArtById($m[1]);
+}
 
 /* ───────────────────────── Gallery ───────────────────────── */
 
@@ -129,7 +133,9 @@ elseif ($requestMethod === 'DELETE' && preg_match('#^/api/galleries/(\d+)$#', $r
 elseif ($requestMethod === 'GET' && preg_match('#^/api/console/galleries$#', $requestUri)) {
     (new GalleryConsoleController())->getGalleryList();
 }
-
+elseif ($requestMethod === 'GET' && preg_match('#^/api/console/galleries/(\d+)$#', $requestUri, $m)) {
+    (new GalleryConsoleController())->getGalleryById($m[1]);
+}
 
 /* ───────────────────────── Announcement ───────────────────────── */
 
