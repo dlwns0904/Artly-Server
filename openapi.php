@@ -9,7 +9,7 @@ use OpenApi\Annotations as OA;
  * )
  *
  * @OA\Server(
- *     url="http://artly.soundgram.co.kr",
+ *     url="https://artly.soundgram.co.kr",
  *     description="Production"
  * )
  */

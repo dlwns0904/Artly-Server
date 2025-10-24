@@ -53,5 +53,19 @@ class AuthMiddleware {
         return $decoded ?? null;
     }
 
+     /**
+     * 인증 및 관리자 권한 검증
+     * @return object 디코딩된 JWT 페이로드
+     */
+    public function requireAdmin() {
+        $decoded = $this->authenticate();
+        if (!isset($decoded->role) || $decoded->role !== 'admin') {
+            http_response_code(403);
+            echo json_encode(['message' => '관리자 권한이 필요합니다.']);
+            exit;
+        }
+        return $decoded;
+    }
+
 }
 

@@ -69,7 +69,9 @@ class AuthController {
             return;
         }
 
-        $jwt = $this->createJwtToken($user, 60); # jwt 토큰 생성 / 유효시간 60분
+	$isAdmin = (int)($user['admin_flag'] ?? $user['adminFlag'] ?? 0) === 1;
+
+        $jwt = $this->createJwtToken($user,$isAdmin, 60); # jwt 토큰 생성 / 유효시간 60분
         echo json_encode([
             'message' => 'Login successful',
             'jwt' => $jwt,
@@ -150,11 +152,12 @@ class AuthController {
         }
     }
 
-    public function createJwtToken($user, $time) {
+    public function createJwtToken($user, bool $isAdmin ,$time) {
         $payload = [
                     'iat' => time(),                 // 발급 시간
                     'exp' => time() + ($time * 60),  // 만료 시간 / time 파라미터의 단위는 minute
                     'user_id' => $user['id'],
+                    'role' => $isAdmin ? 'admin' : 'user',
                     'login_id' => $user['login_id'],
         ];
 
