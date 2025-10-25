@@ -79,7 +79,7 @@ class ArtConsoleController {
                 } else {
                     http_response_code(404);
                     header('Content-Type: application/json');
-                    echo json_encode(['message' => '해당 이름의 갤러리를 찾을 수 없습니다.'], JSON_UNESCAPED_UNICODE);
+                    echo json_encode(['message' => '해당 이름의 갤러리를 찾을 수 없습니다.'], JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
                     return;
                 }
             }
@@ -104,13 +104,13 @@ class ArtConsoleController {
             }
 
             header('Content-Type: application/json');
-            echo json_encode($allArts, JSON_UNESCAPED_UNICODE);
+            echo json_encode($allArts, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
 
         } catch (\Exception $e) {
             http_response_code(500);
             error_log($e->getMessage());
             header('Content-Type: application/json');
-            echo json_encode(['message' => '서버 오류가 발생했습니다.'], JSON_UNESCAPED_UNICODE);
+            echo json_encode(['message' => '서버 오류가 발생했습니다.'], JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
         }
     }
 

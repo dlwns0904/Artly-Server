@@ -77,7 +77,7 @@ class UserConsoleController {
         try {
             $this->authMiddleware->requireAdmin();
 
-            // liked_type 파라미터 유효성 검사
+            // 파라미터 유효성 검사
             if (empty($_GET['liked_type'])) {
                 http_response_code(400);
                 echo json_encode(['message' => 'liked_type 파라미터는 필수입니다.']);
@@ -97,32 +97,15 @@ class UserConsoleController {
             // search 파라미터 가져오기
             $searchTerm = $_GET['search'] ?? null;
 
-            // 데이터 조회
+            // likedType에 따른 {likedType}_like 테이블의 데이터 조회
             $likedItems = $this->likeModel->getAll($likedType);
-            $results = [];
 
-            // search 파라미터가 있을 경우에만 데이터 필터링
-            if (!empty($searchTerm)) {
-                $results = array_filter($likedItems, function($item) use ($searchTerm) {
-                    // item의 모든 string 값에 대해 검색어 포함 여부 확인
-                    foreach ($item as $value) {
-                        if (is_string($value) && stripos($value, $searchTerm) !== false) {
-                            return true; 
-                        }
-                    }
-                    return false;
-                });
-                // 인덱스를 재정렬 (0부터 시작하도록)
-                $results = array_values($results);
-            } else {
-                // 검색어가 없으면 전체 결과를 반환
-                $results = $likedItems;
-            }
-
+            // $results 변수에 바로 담아서 처리
+            $results = $likedItems; 
             foreach ($results as &$item) {
                 // 공통 : user_id를 바탕으로 userModel의 getById를 바탕으로 새로운 user필드에 조회한 정보 추가
                 if (!empty($item['user_id'])) {
-                    $item['user'] = $this->userModel->getById($item['user_id']);
+                    $item['user'] = (array) $this->userModel->getById($item['user_id']);
                 } else {
                     $item['user'] = null;
                 }
@@ -130,25 +113,22 @@ class UserConsoleController {
                 // $likedType에 따라 적절한 모델을 사용하여 상세 정보 추가
                 switch ($likedType) {
                     case 'gallery':
-                        // gallery -> gallery_id를 바탕으로 galleryModel의 getById를 바탕으로 새로운 gallery 필드에 조회한 정보 추가
                         if (!empty($item['gallery_id'])) {
-                            $item['gallery'] = $this->galleryModel->getById($item['gallery_id']);
+                            $item['gallery'] = (array) $this->galleryModel->getById($item['gallery_id']);
                         } else {
                             $item['gallery'] = null;
                         }
                         break;
                     case 'exhibition':
-                        // exhibition -> exhibition_id를 바탕으로 exhibitionModel의 getById를 바탕으로 새로운 exhibition 필드에 조회한 정보 추가
                         if (!empty($item['exhibition_id'])) {
-                            $item['exhibition'] = $this->exhibitionModel->getById($item['exhibition_id']);
+                            $item['exhibition'] = (array) $this->exhibitionModel->getById($item['exhibition_id']);
                         } else {
                             $item['exhibition'] = null;
                         }
                         break;
                     case 'art':
-                        // art -> art_id를 바탕으로 artModel의 getById를 바탕으로 새로운 art 필드에 조회한 정보 추가
                         if (!empty($item['art_id'])) {
-                            $item['art'] = $this->artModel->getById($item['art_id']);
+                            $item['art'] = (array) $this->artModel->getById($item['art_id']);
                         } else {
                             $item['art'] = null;
                         }
@@ -157,8 +137,53 @@ class UserConsoleController {
             }
             unset($item);
 
+            $finalResults = $results; // 기본값은 전체 결과
+
+            if (!empty($searchTerm)) {
+                
+                $filteredResults = array_filter($results, function($item) use ($searchTerm, $likedType) {
+                    
+                    // 사용자명(user_name) 검색
+                    if (isset($item['user']) && isset($item['user']['user_name']) && is_string($item['user']['user_name'])) {
+                        if (stripos($item['user']['user_name'], $searchTerm) !== false) {
+                            return true; // 사용자명에서 일치!
+                        }
+                    }
+
+                    // likedType에 따른 대상 이름 검색
+                    switch ($likedType) {
+                        case 'gallery':
+                            if (isset($item['gallery']) && isset($item['gallery']['gallery_name']) && is_string($item['gallery']['gallery_name'])) {
+                                if (stripos($item['gallery']['gallery_name'], $searchTerm) !== false) {
+                                    return true; // gallery_name에서 일치
+                                }
+                            }
+                            break;
+                        case 'exhibition':
+                            if (isset($item['exhibition']) && isset($item['exhibition']['exhibition_name']) && is_string($item['exhibition']['exhibition_name'])) {
+                                if (stripos($item['exhibition']['exhibition_name'], $searchTerm) !== false) {
+                                    return true; // exhibition_name에서 일치
+                                }
+                            }
+                            break;
+                        case 'art':
+                            if (isset($item['art']) && isset($item['art']['art_name']) && is_string($item['art']['art_name'])) {
+                                if (stripos($item['art']['art_name'], $searchTerm) !== false) {
+                                    return true; // art_name에서 일치!
+                                }
+                            }
+                            break;
+                    }
+
+                    return false; // 어디에도 일치하지 않음
+                });
+                
+                // 인덱스를 재정렬
+                $finalResults = array_values($filteredResults);
+            }
+
             header('Content-Type: application/json');
-            echo json_encode($results, JSON_UNESCAPED_UNICODE);
+            echo json_encode($finalResults, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
 
         } catch (\Exception $e) {
             http_response_code(500);
