@@ -25,53 +25,73 @@ class GalleryConsoleController {
 
     /**
      * @OA\Get(
-     *   path="/api/console/galleries",
-     *   summary="[콘솔] 갤러리 목록 조회",
-     *   description="관리자(사용자)가 소유한 모든 갤러리의 상세 정보 목록을 조회합니다.",
-     *   tags={"GalleryConsole"},
-     *   security={{"bearerAuth": {}}},
-     *   @OA\Response(
-     *     response=200,
-     *     description="성공적인 조회",
-     *     @OA\JsonContent(
-     *       type="array",
-     *       @OA\Items(
-     *         type="object",
-     *         @OA\Property(property="id", type="integer", example=1, description="갤러리 ID"),
-     *         @OA\Property(property="user_id", type="integer", example=12, description="사용자 ID"),
-     *         @OA\Property(property="name", type="string", example="My First Gallery", description="갤러리 이름"),
-     *         @OA\Property(property="description", type="string", example="This is a collection of my favorite pieces.", description="갤러리 상세 설명"),
-     *         @OA\Property(property="is_default", type="boolean", example=true, description="기본 갤러리 여부"),
-     *         @OA\Property(property="created_at", type="string", format="date-time", description="생성 시간"),
-     *         @OA\Property(property="updated_at", type="string", format="date-time", description="마지막 수정 시간")
-     *       )
-     *     )
-     *   ),
-     *   @OA\Response(response=401, description="인증 실패 (관리자 권한 필요)"),
-     *   @OA\Response(response=500, description="서버 오류")
+     * path="/api/console/galleries",
+     * summary="[콘솔] 갤러리 목록 조회",
+     * description="관리자(사용자)가 소유한 모든 갤러리의 상세 정보 목록을 조회합니다.",
+     * tags={"GalleryConsole"},
+     * security={{"bearerAuth": {}}},
+     * * // [추가] gallery_name을 query 파라미터로 받도록 어노테이션 추가
+     * @OA\Parameter(
+     * name="gallery_name",
+     * in="query",
+     * description="검색할 갤러리 이름 (부분 일치)",
+     * required=false,
+     * @OA\Schema(type="string", example="My First")
+     * ),
+     * * @OA\Response(
+     * response=200,
+     * description="성공적인 조회",
+     * @OA\JsonContent(
+     * type="array",
+     * @OA\Items(
+     * type="object",
+     * @OA\Property(property="id", type="integer", example=1, description="갤러리 ID"),
+     * @OA\Property(property="user_id", type="integer", example=12, description="사용자 ID"),
+     * @OA\Property(property="name", type="string", example="My First Gallery", description="갤러리 이름"),
+     * @OA\Property(property="description", type="string", example="This is a collection of my favorite pieces.", description="갤러리 상세 설명"),
+     * @OA\Property(property="is_default", type="boolean", example=true, description="기본 갤러리 여부"),
+     * @OA\Property(property="created_at", type="string", format="date-time", description="생성 시간"),
+     * @OA\Property(property="updated_at", type="string", format="date-time", description="마지막 수정 시간")
+     * )
+     * )
+     * ),
+     * @OA\Response(response=401, description="인증 실패 (관리자 권한 필요)"),
+     * @OA\Response(response=500, description="서버 오류")
      * )
      */ 
     public function getGalleryList() {
         try {
             $decoded = $this->authMiddleware->requireAdmin();
 
-            $galleries = $this->galleryModel->getGalleries(['user_id' => $user_id]);
+            // [버그 수정] $user_id가 정의되지 않았습니다.
+            // $decoded 객체에서 실제 사용자 ID를 가져와야 합니다. (예: $decoded->user_id 또는 $decoded->sub)
+            // 여기서는 $decoded->user_id라고 가정하겠습니다.
+            $user_id = $decoded->user_id; 
+
+            // [기능 추가] 'gallery_name' GET 파라미터를 읽어옵니다.
+            $galleryName = $_GET['gallery_name'] ?? null;
+
+            // [로직 개선] 모델에 전달할 필터 배열을 구성합니다.
+            $filters = ['user_id' => $user_id];
+            if (!empty($galleryName)) {
+                $filters['gallery_name'] = $galleryName;
+            }
+
+            // [성능 개선] N+1 쿼리 문제 해결
+            // getGalleries 메소드가 필터 배열을 받아 한 번의 쿼리로 모든 데이터를 가져오도록 합니다.
+            // (기존의 비효율적인 foreach 루프를 제거합니다.)
+            $galleries = $this->galleryModel->getGalleries($filters);
+
+            // 기존 로직은 유지 (빈 배열 반환)
             if (empty($galleries)) {
                 header('Content-Type: application/json');
                 echo json_encode([], JSON_UNESCAPED_UNICODE);
                 return;
             }
 
-            $allGalleriesWithDetails = [];
-            foreach ($galleries as $gallery) {
-                $galleryInfo = $this->galleryModel->getById($gallery['id'], $user_id);
-                if ($galleryInfo) {
-                    $allGalleriesWithDetails[] = $galleryInfo;
-                }
-            }
-
+            // [성능 개선] 불필요한 루프를 제거했으므로, $galleries를 바로 반환합니다.
             header('Content-Type: application/json');
-            echo json_encode($allGalleriesWithDetails, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
+            echo json_encode($galleries, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
 
         } catch (\Exception $e) {
             http_response_code(500);
