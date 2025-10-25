@@ -54,7 +54,6 @@ class GalleryConsoleController {
     public function getGalleryList() {
         try {
             $decoded = $this->authMiddleware->requireAdmin();
-            $user_id = $decoded->sub;
 
             $galleries = $this->galleryModel->getGalleries(['user_id' => $user_id]);
             if (empty($galleries)) {
@@ -72,7 +71,7 @@ class GalleryConsoleController {
             }
 
             header('Content-Type: application/json');
-            echo json_encode($allGalleriesWithDetails, JSON_UNESCAPED_UNICODE);
+            echo json_encode($allGalleriesWithDetails, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
 
         } catch (\Exception $e) {
             http_response_code(500);
@@ -143,7 +142,7 @@ class GalleryConsoleController {
         $decoded = $this->authMiddleware->requireAdmin();
         $user_id = $decoded->sub;
 
-        $gallery = $this->galleryModel->getById($id, $user_id);
+        $gallery = $this->galleryModel->getById($id);
 
         if ($gallery) {
             $filters = ['gallery_id' => $id];
