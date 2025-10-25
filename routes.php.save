@@ -1,14 +1,8 @@
-<?php
-require_once __DIR__ . '/vendor/autoload.php';
-
+<?php require_once __DIR__ . '/vendor/autoload.php';
 
 use Dotenv\Dotenv;
-// .env가 있을 때만 읽고, 일부 키가 없어도 죽지 않게
-if (file_exists(__DIR__ . '/.env')) {
-    Dotenv::createImmutable(__DIR__)->safeLoad();
-}
-
-
+$dotenv = Dotenv::createImmutable(__DIR__);
+$dotenv->load();
 
 use Controllers\ArtistController;
 use Controllers\ExhibitionController;
