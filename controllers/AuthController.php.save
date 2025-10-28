@@ -156,8 +156,8 @@ class AuthController {
         $payload = [
                     'iat' => time(),                 // 발급 시간
                     'exp' => time() + ($time * 60),  // 만료 시간 / time 파라미터의 단위는 minute
-                    'sub' => (string)$user['id'],
-                    'user_id' => $user['id'],
+                    
+'user_id' => $user['id'],
                     'role' => $isAdmin ? 'admin' : 'user',
                     'login_id' => $user['login_id'],
         ];

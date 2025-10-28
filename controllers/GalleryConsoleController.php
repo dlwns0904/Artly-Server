@@ -23,42 +23,45 @@ class GalleryConsoleController {
         $this->exhibitionModel = new ExhibitionModel();
     }
 
+
     /**
-     * @OA\Get(
-     * path="/api/console/galleries",
-     * summary="[콘솔] 갤러리 목록 조회",
-     * description="관리자(사용자)가 소유한 모든 갤러리의 상세 정보 목록을 조회합니다.",
-     * tags={"GalleryConsole"},
-     * security={{"bearerAuth": {}}},
-     * * // [추가] gallery_name을 query 파라미터로 받도록 어노테이션 추가
-     * @OA\Parameter(
-     * name="gallery_name",
-     * in="query",
-     * description="검색할 갤러리 이름 (부분 일치)",
-     * required=false,
-     * @OA\Schema(type="string", example="My First")
-     * ),
-     * * @OA\Response(
-     * response=200,
-     * description="성공적인 조회",
-     * @OA\JsonContent(
-     * type="array",
-     * @OA\Items(
-     * type="object",
-     * @OA\Property(property="id", type="integer", example=1, description="갤러리 ID"),
-     * @OA\Property(property="user_id", type="integer", example=12, description="사용자 ID"),
-     * @OA\Property(property="name", type="string", example="My First Gallery", description="갤러리 이름"),
-     * @OA\Property(property="description", type="string", example="This is a collection of my favorite pieces.", description="갤러리 상세 설명"),
-     * @OA\Property(property="is_default", type="boolean", example=true, description="기본 갤러리 여부"),
-     * @OA\Property(property="created_at", type="string", format="date-time", description="생성 시간"),
-     * @OA\Property(property="updated_at", type="string", format="date-time", description="마지막 수정 시간")
-     * )
-     * )
-     * ),
-     * @OA\Response(response=401, description="인증 실패 (관리자 권한 필요)"),
-     * @OA\Response(response=500, description="서버 오류")
-     * )
-     */ 
+ * @OA\Get(
+ *   path="/api/console/galleries",
+ *   summary="[콘솔] 갤러리 목록 조회",
+ *   description="관리자(사용자)가 소유한 모든 갤러리의 상세 정보 목록을 조회합니다.",
+ *   tags={"GalleryConsole"},
+ *   security={{"bearerAuth": {}}},
+ *
+ *   @OA\Parameter(
+ *     name="gallery_name",
+ *     in="query",
+ *     description="검색할 갤러리 이름 (부분 일치)",
+ *     required=false,
+ *     @OA\Schema(type="string", example="My First")
+ *   ),
+ *
+ *   @OA\Response(
+ *     response=200,
+ *     description="성공적인 조회",
+ *     @OA\JsonContent(
+ *       type="array",
+ *       @OA\Items(
+ *         type="object",
+ *         @OA\Property(property="id", type="integer", example=1, description="갤러리 ID"),
+ *         @OA\Property(property="user_id", type="integer", example=12, description="사용자 ID"),
+ *         @OA\Property(property="name", type="string", example="My First Gallery", description="갤러리 이름"),
+ *         @OA\Property(property="description", type="string", example="This is a collection of my favorite pieces.", description="갤러리 상세 설명"),
+ *         @OA\Property(property="is_default", type="boolean", example=true, description="기본 갤러리 여부"),
+ *         @OA\Property(property="created_at", type="string", format="date-time", description="생성 시간"),
+ *         @OA\Property(property="updated_at", type="string", format="date-time", description="마지막 수정 시간")
+ *       )
+ *     )
+ *   ),
+ *
+ *   @OA\Response(response=401, description="인증 실패 (관리자 권한 필요)"),
+ *   @OA\Response(response=500, description="서버 오류")
+ * )
+ */
     public function getGalleryList() {
         try {
             $decoded = $this->authMiddleware->requireAdmin();
