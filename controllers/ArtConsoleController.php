@@ -112,7 +112,7 @@ class ArtConsoleController {
                 }
 
                 // 만약 $galleries가 없다면 이 루프에서의 $art는 dummy이므로,
-                if (!empty($targetGalleryId) && empty($galleries)) {
+                if (!empty($targetGalleryId) || empty($galleries)) {
                     continue;
                 }
 

@@ -267,11 +267,34 @@ class GalleryModel {
 }
 
 
-   public function getGalleriesBySearch($filters = []) {
-    $search = $filters['search'];
-    $stmt = $this->pdo->prepare("SELECT * FROM APIServer_gallery WHERE gallery_name LIKE :search");
-    $stmt->execute([':search' => "%$search%"]);
-    return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    public function getGalleriesBySearch($filters = []) {
+        // 1. 기본 쿼리문과 WHERE 조건절 배열, 파라미터 배열을 준비합니다.
+        $sql = "SELECT * FROM APIServer_gallery";
+        $whereClauses = [];
+        $params = [];
+
+        // 2. 'search' 필터가 있으면 gallery_name 조건을 추가합니다.
+        if (!empty($filters['search'])) {
+            $whereClauses[] = "gallery_name LIKE :search";
+            $params[':search'] = "%" . $filters['search'] . "%";
+        }
+
+        // 3. 'user_id' 필터가 있으면 user_id 조건을 추가합니다.
+        if (!empty($filters['user_id'])) {
+            $whereClauses[] = "user_id = :user_id";
+            $params[':user_id'] = $filters['user_id'];
+        }
+
+        // 4. WHERE 조건이 하나라도 있으면 쿼리문에 추가합니다.
+        // implode() 함수를 사용해 " AND "로 각 조건들을 연결합니다.
+        if (!empty($whereClauses)) {
+            $sql .= " WHERE " . implode(" AND ", $whereClauses);
+        }
+
+        // 5. 완성된 쿼리와 파라미터로 실행합니다.
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute($params);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 }
 
