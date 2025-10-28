@@ -61,7 +61,7 @@ class ArtModel {
                 ea.art_id = :id
         ");
         $stmt->execute(['id' => $id]);
-        return $stmt->fetch(PDO::FETCH_ASSOC);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
 
