@@ -63,33 +63,57 @@ class GalleryConsoleController {
         try {
             $decoded = $this->authMiddleware->requireAdmin();
 
-            // [버그 수정] $user_id가 정의되지 않았습니다.
-            // $decoded 객체에서 실제 사용자 ID를 가져와야 합니다. (예: $decoded->user_id 또는 $decoded->sub)
-            // 여기서는 $decoded->user_id라고 가정하겠습니다.
+            // $decoded 객체에서 실제 사용자 ID를 가져옵니다. (예: $decoded->user_id)
             $user_id = $decoded->user_id; 
 
-            // [기능 추가] 'gallery_name' GET 파라미터를 읽어옵니다.
+            // 'gallery_name' GET 파라미터를 읽어옵니다.
             $galleryName = $_GET['gallery_name'] ?? null;
 
-            // [로직 개선] 모델에 전달할 필터 배열을 구성합니다.
+            // 모델에 전달할 필터 배열을 구성합니다.
             $filters = ['user_id' => $user_id];
             if (!empty($galleryName)) {
-                $filters['gallery_name'] = $galleryName;
+                $filters['search'] = $galleryName;
             }
 
-            // [성능 개선] N+1 쿼리 문제 해결
-            // getGalleries 메소드가 필터 배열을 받아 한 번의 쿼리로 모든 데이터를 가져오도록 합니다.
-            // (기존의 비효율적인 foreach 루프를 제거합니다.)
-            $galleries = $this->galleryModel->getGalleries($filters);
+            // 갤러리 목록을 가져옵니다.
+            $galleries = $this->galleryModel->getGalleriesBySearch($filters);
 
-            // 기존 로직은 유지 (빈 배열 반환)
+            // 갤러리가 없으면 빈 배열 반환
             if (empty($galleries)) {
                 header('Content-Type: application/json');
                 echo json_encode([], JSON_UNESCAPED_UNICODE);
                 return;
             }
 
-            // [성능 개선] 불필요한 루프를 제거했으므로, $galleries를 바로 반환합니다.
+            // $galleries 배열을 순회하며 각 갤러리에 전시회 정보를 추가합니다.
+            // $gallery 변수를 참조(&)로 받아야 원본 $galleries 배열에 변경 사항이 반영됩니다.
+            foreach ($galleries as &$gallery) {
+                
+                // 1. $gallery가 객체인지 배열인지 확인하여 ID를 가져옵니다.
+                // (모델이 stdClass를 반환하면 ->id, 연관 배열을 반환하면 ['id'])
+                $galleryId = is_object($gallery) ? $gallery->id : $gallery['id'];
+
+                // 2. exhibitionModel에 전달할 필터 생성
+                $exhibitionFilters = ['gallery_id' => $galleryId];
+
+                // 3. gallery_id로 전시회 정보 가져오기
+                $exhibitions = $this->exhibitionModel->getExhibitions($exhibitionFilters);
+                
+                // 4. 전시회 총 개수 계산
+                $exhibitionCount = count($exhibitions);
+
+                // 5. $gallery에 총 개수와 전시회 목록 추가
+                if (is_object($gallery)) {
+                    $gallery->exhibitions = $exhibitions;
+                    $gallery->exhibition_count = $exhibitionCount;
+                } else {
+                    $gallery['exhibitions'] = $exhibitions;
+                    $gallery['exhibition_count'] = $exhibitionCount;
+                }
+            }
+            unset($gallery);
+
+            // 최종 결과를 JSON으로 인코딩하여 반환
             header('Content-Type: application/json');
             echo json_encode($galleries, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
 
