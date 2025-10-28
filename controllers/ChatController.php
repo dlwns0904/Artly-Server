@@ -22,8 +22,8 @@ class ChatController {
     public function __construct() {
         $this->model = new ChatModel();
         $this->auth = new AuthMiddleware();
-        $this->gpt_model_extraction = 'gpt-4.1-mini';
-        $this->gpt_model_response = 'gpt-4.1-nano';
+        $this->gpt_model_extraction = 'gpt-5-mini';
+        $this->gpt_model_response = 'gpt-5-nano';
         $this->api_key = $_ENV['openaiApiKey'];
         $this->systemPrompt = "당신은 Artly 앱의 안내 챗봇 Artlas입니다. 사용자의 응답에 친절하게 답변하세요. 이 시스템에서는 사용자와의 이전 대화 기록이 messages로 항상 제공됩니다. 따라서 당신은 실제로 메모리를 가진 것처럼 동작해야 하며, 과거 대화를 기반으로 적절한 답변을 제공합니다. 사용자가 '내가 방금 뭐라고 했어?', '기억해?' 와 같이 질문하면 messages에 제공된 이전 대화를 참고하여 가장 최근 사용자의 질문이나 대화 내용을 그대로 요약해서 알려주세요. '저는 기억하지 못합니다' 또는 '저장하지 않습니다'라는 말은 절대 하지 마세요. 당신은 항상 대화 기록을 참고하여 대답합니다.";
     }

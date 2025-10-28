@@ -13,11 +13,13 @@ class ChatModel {
     }
 
     # 채팅 목록
+    // ChatModel.php
     public function getConversations($userId) {
-        $stmt = $this->pdo->prepare("SELECT * FROM APIServer_conversation WHERE user_id = :user_id");
-        $stmt->execute(['user_id' => $userId]);
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
-    }
+    $stmt = $this->pdo->prepare("SELECT * FROM APIServer_conversation WHERE user_id = :user_id ORDER BY id ASC"); // ✅ 정렬
+    $stmt->execute(['user_id' => $userId]);
+    return $stmt->fetchAll(PDO::FETCH_ASSOC);
+}
+
 
     # 채팅 생성
     public function addConversations($userId, $role, $content) {
