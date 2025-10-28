@@ -2,12 +2,12 @@
 namespace Controllers;
 
 use OpenApi\Annotations as OA;
-use Models\ImageService;
+use Models\ImageGenerateModel;
 
 /**
  * @OA\Tag(name="Image", description="이미지 생성 API")
  */
-class ImageController
+class ImageGenerateConsoleController
 {
     private ImageService $svc;
 
