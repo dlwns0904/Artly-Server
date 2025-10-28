@@ -121,7 +121,7 @@ class ArtConsoleController {
                 $art['artist'] = $artist;
                 $art['galleries'] = $galleries;
 
-                $results = array_merge($results, $art);
+                $results[] = $art;
             }
 
             header('Content-Type: application/json');
