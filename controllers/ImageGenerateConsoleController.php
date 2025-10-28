@@ -5,26 +5,28 @@ use OpenApi\Annotations as OA;
 use Models\ImageGenerateModel;
 
 /**
- * @OA\Tag(name="Image", description="이미지 생성 API")
+ * @OA\Tag(name="ImageGenerate", description="이미지 생성 콘솔 API")
  */
 class ImageGenerateConsoleController
 {
-    private ImageService $svc;
+    /** @var \Models\ImageGenerateModel */
+    private $svc;
 
-    // 추출은 gpt-5-mini, 편집은 gpt-image-1 사용
-    private string $modelExtraction = 'gpt-5-mini';
-    private string $modelImage     = 'gpt-image-1';
+    /** @var string */
+    private $modelExtraction = 'gpt-5-mini';
+    /** @var string */
+    private $modelImage = 'gpt-image-1';
 
     public function __construct()
     {
-        $this->svc = new ImageService($_ENV['openaiApiKey'], $_ENV['pixabayApiKey']);
+        $this->svc = new ImageGenerateModel($_ENV['openaiApiKey'], $_ENV['pixabayApiKey']);
     }
 
     /**
      * @OA\Post(
-     *   path="/api/images/generate",
-     *   summary="전시 포스터 배경 이미지 생성",
-     *   tags={"Image"},
+     *   path="/api/console/images/generate",
+     *   summary="전시 포스터 배경 이미지 생성 (콘솔용)",
+     *   tags={"ImageGenerate"},
      *   @OA\RequestBody(
      *     required=true,
      *     @OA\JsonContent(
@@ -53,7 +55,7 @@ class ImageGenerateConsoleController
         header('Content-Type: application/json; charset=utf-8');
 
         $body = json_decode(file_get_contents('php://input'), true);
-        $userText = trim($body['text'] ?? '');
+        $userText = trim(isset($body['text']) ? $body['text'] : '');
         if ($userText === '') {
             http_response_code(400);
             echo json_encode(['message' => 'text 파라미터가 필요합니다.'], JSON_UNESCAPED_UNICODE);
@@ -73,11 +75,11 @@ class ImageGenerateConsoleController
                 return;
             }
 
-            // 3) 시드 이미지 다운로드(임시파일)
+            // 3) 시드 이미지 다운로드
             $tmpFiles = $this->svc->downloadTempFiles($seedUrls);
 
             // 4) OpenAI 이미지 편집 호출
-            $prompt = $this->svc->buildImagePrompt($userText);
+            $prompt  = $this->svc->buildImagePrompt($userText);
             $dataUrl = $this->svc->callImagesEdits($this->modelImage, $prompt, $tmpFiles);
 
             // 5) 정리
@@ -97,8 +99,7 @@ class ImageGenerateConsoleController
             ], JSON_UNESCAPED_UNICODE);
 
         } catch (\RuntimeException $e) {
-            // OpenAI 429 등
-            if (str_contains($e->getMessage(), '429')) {
+            if (strpos($e->getMessage(), '429') !== false) {
                 http_response_code(429);
             } else {
                 http_response_code(500);

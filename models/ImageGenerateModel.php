@@ -1,14 +1,20 @@
 <?php
 namespace Models;
 
-class ImageService
+class ImageGenerateModel
 {
-    public function __construct(
-        private string $openaiKey,
-        private string $pixabayKey
-    ) {}
+    /** @var string */
+    private $openaiKey;
+    /** @var string */
+    private $pixabayKey;
 
-    /** 키워드 추출: Chat Completions */
+    public function __construct($openaiKey, $pixabayKey)
+    {
+        $this->openaiKey  = $openaiKey;
+        $this->pixabayKey = $pixabayKey;
+    }
+
+    /** 키워드 추출 */
     public function extractKeywords(string $userText, string $model='gpt-5-mini'): array
     {
         $system = '사용자 이미지 요구에서 포스터 "배경" 검색용 키워드만 JSON으로 추출하세요.';
@@ -36,12 +42,12 @@ TXT;
             "Content-Type: application/json"
         ]);
 
-        $content = $resp['choices'][0]['message']['content'] ?? '';
+        $content = isset($resp['choices'][0]['message']['content']) ? $resp['choices'][0]['message']['content'] : '';
         if (!$content) return [];
 
         $json = trim(preg_replace('/```json|```/i', '', $content));
         $obj = json_decode($json, true);
-        $arr = $obj['keywords'] ?? [];
+        $arr = isset($obj['keywords']) ? $obj['keywords'] : [];
 
         $out = [];
         foreach ((array)$arr as $kw) {
@@ -51,30 +57,28 @@ TXT;
         return array_slice(array_values(array_unique($out)), 0, 2);
     }
 
-    /** 추출 실패 시 간이 대체 */
     public function fallbackKeywords(string $text): array
     {
         $words = preg_split('/\s+/', mb_strtolower($text));
-        $words = array_filter($words, fn($w)=>preg_match('/^[a-z가-힣]+$/u', $w));
+        $words = array_filter($words, function ($w) { return preg_match('/^[a-z가-힣]+$/u', $w); });
         return array_slice(array_values(array_unique($words)), 0, 2);
     }
 
-    /** Pixabay 검색 → 무작위 N개 URL */
     public function fetchPixabayImages(array $keywords, int $n=2): array
     {
         $query = implode(' ', $keywords);
         $url = "https://pixabay.com/api/?key={$this->pixabayKey}&q=".urlencode($query)."&per_page=20&orientation=vertical&safesearch=true";
         $json = $this->getJson($url);
-        $hits = $json['hits'] ?? [];
+        $hits = isset($json['hits']) ? $json['hits'] : [];
         if (!$hits) return [];
         shuffle($hits);
         $sel = array_slice($hits, 0, $n);
         return array_values(array_filter(array_map(
-            fn($h) => $h['largeImageURL'] ?? $h['webformatURL'] ?? null, $sel
+            function ($h) { return isset($h['largeImageURL']) ? $h['largeImageURL'] : (isset($h['webformatURL']) ? $h['webformatURL'] : null); },
+            $sel
         )));
     }
 
-    /** URL → 임시파일 */
     public function downloadTempFiles(array $urls): array
     {
         $files = [];
@@ -83,17 +87,17 @@ TXT;
             if ($data === false) continue;
             $tmp = tempnam(sys_get_temp_dir(), 'px_');
             file_put_contents($tmp, $data);
-            // 간단 확장자 보정
-            $mime = finfo_buffer(finfo_open(FILEINFO_MIME_TYPE), $data) ?: 'image/jpeg';
-            $ext  = ($mime === 'image/png') ? '.png' : '.jpg';
-            $new  = $tmp.$ext;
+            $finfo = finfo_open(FILEINFO_MIME_TYPE);
+            $mime  = $finfo ? finfo_buffer($finfo, $data) : 'image/jpeg';
+            if ($finfo) finfo_close($finfo);
+            $ext   = ($mime === 'image/png') ? '.png' : '.jpg';
+            $new   = $tmp.$ext;
             rename($tmp, $new);
             $files[] = $new;
         }
         return $files;
     }
 
-    /** OpenAI Images Edits → data:image/png;base64,... */
     public function callImagesEdits(string $model, string $prompt, array $imagePaths): ?string
     {
         $boundary = uniqid('frm_');
@@ -122,39 +126,34 @@ TXT;
 
         foreach ($imagePaths as $p) {
             if (!is_file($p)) continue;
-            $bin = file_get_contents($p);
-            $name= basename($p);
-            $type= str_ends_with($name, '.png') ? 'image/png' : 'image/jpeg';
-            // 동일 필드명 반복 첨부
+            $bin  = file_get_contents($p);
+            $name = basename($p);
+            $type = (substr($name, -4) === '.png') ? 'image/png' : 'image/jpeg';
             $add('image', $bin, $name, $type);
         }
         $body .= "--{$boundary}--\r\n";
 
-        $res = $this->rawPost('https://api.openai.com/v1/images/edits', $body, $headers);
+        $res  = $this->rawPost('https://api.openai.com/v1/images/edits', $body, $headers);
         $code = $res['code'];
         $txt  = $res['body'];
 
         if ($code >= 400) throw new \RuntimeException("OpenAI error {$code}: ".$txt);
 
         $json = json_decode($txt, true);
-        $b64  = $json['data'][0]['b64_json'] ?? null;
+        $b64  = isset($json['data'][0]['b64_json']) ? $json['data'][0]['b64_json'] : null;
         return $b64 ? 'data:image/png;base64,'.$b64 : null;
     }
 
-    /** 이미지 생성 지침 + 사용자 요구사항 */
     public function buildImagePrompt(string $userText): string
     {
         return <<<PROMPT
 이미지 생성 지침:
-1) 사용자의 요구를 반영해 전시회 포스터에 적합한 "배경 이미지"를 생성합니다.
-2) 사용자가 제공한 스타일 요청을 정확히 반영하십시오.
-3) 분위기는 요구의 방향성에 맞춰 일관되게 표현합니다.
-4) 전문적인 포스터 디자인 관점에서 시각적 균형/조화를 유지하십시오.
-5) 요구하지 않은 요소가 과도하게 두드러지지 않도록 합니다.
-6) 배경 용도이므로 요소 과밀을 피합니다.
-7) 텍스트(제목/문구) 삽입 금지.
+1) 전시회 포스터에 적합한 "배경 이미지"를 생성합니다.
+2) 사용자의 스타일 요구를 정확히 반영하십시오.
+3) 전문적인 디자인 관점에서 조화와 균형을 유지하십시오.
+4) 텍스트나 과도한 요소는 제외하십시오.
 
-요구사항: {$userText}
+요청사항: {$userText}
 PROMPT;
     }
 
@@ -183,7 +182,7 @@ PROMPT;
         $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         curl_close($ch);
         if ($code >= 400) throw new \RuntimeException("HTTP {$code}: {$res}");
-        return json_decode($res, true) ?? [];
+        return json_decode($res, true) ?: [];
     }
 
     private function rawPost(string $url, string $body, array $headers=[]): array
@@ -220,6 +219,6 @@ PROMPT;
         $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         curl_close($ch);
         if ($code >= 400) throw new \RuntimeException("HTTP {$code}: {$res}");
-        return json_decode($res, true) ?? [];
+        return json_decode($res, true) ?: [];
     }
 }
