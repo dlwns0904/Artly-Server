@@ -149,11 +149,14 @@ class ExhibitionConsoleController {
         }
 
         $gallery = null;
+
         if (!empty($exhibitionDetail['gallery_id'])) {
             $gallery = $this->galleryModel->getGalleryById($exhibitionDetail['gallery_id']);
         }
 
         $exhibitionDetail['gallery'] = $gallery;
+
+        // TODO : 작가명 추가
 
         header('Content-Type: application/json');
         echo json_encode($exhibitionDetail, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);

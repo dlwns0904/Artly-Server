@@ -70,12 +70,13 @@ class ArtConsoleController {
         try {
             $this->authMiddleware->requireAdmin();
 
-            $filters = [];
+            // gallery_name이 파라미터로 들어오면 제한해야하고 아니면 아니므로
+            $targetGalleryId = null;
 
             if (!empty($_GET['gallery_name'])) {
                 $galleryList = $this->galleryModel->getGalleries(['search' => $_GET['gallery_name']]);
                 if (!empty($galleryList)) {
-                    $filters['gallery_id'] = $galleryList[0]['id'];
+                    $targetGalleryId = $galleryList[0]['id'];
                 } else {
                     http_response_code(404);
                     header('Content-Type: application/json');
@@ -84,27 +85,47 @@ class ArtConsoleController {
                 }
             }
 
-            $exhibitions = $this->exhibitionModel->getExhibitions($filters);
+            // 해당하는 작품만 포함할 것임
+            $results = [];
 
-            $allArts = [];
-            foreach ($exhibitions as $exhibition) {
-                $artsForOneExhibition = $this->artModel->getAll(['exhibition_id' => $exhibition['id']]);
+            // 모든 작품 리스트를 갖고와서 순회할 것임
+            $arts = $this->artModel->getAll();
 
-                foreach ($artsForOneExhibition as &$art) {
-                    if (!empty($art['artist_id'])) {
-                        $artistData = $this->artistModel->getById($art['artist_id']);
-                        $art['artist'] = $artistData;
-                    } else {
-                        $art['artist'] = null;
+            foreach ($arts as $art) {
+                // 해당 작품이 전시되어있는 모든 전시회 불러오기(작품과 전시회는 일대다 관계)
+                $exhibitionsForArt = $this->artModel->getExhibitionIdByArtId($art['id']);
+
+                // 최종 return에 추가로 포함시킬 항목들
+                $artists = null;
+                $galleries = [];
+
+                foreach ($exhibitionsForArt as $exhibitionForArt) {
+                    $exhibition = $this->exhibitionModel->getById($exhibitionForArt['exhibition_id']);
+                    
+                    // 파라미터로 gallery_name이 들어온 경우 이를 타깃과 맞지 않는 gallery_id면 모두 continue
+                    if (!empty($targetGalleryId) && $exhibition['gallery_id'] != $targetGalleryId) {
+                        continue;
                     }
+                    // 위 조건문으로 걸러지지 않은 것은 모두 필드 추가해야하는 항목이므로
+                    $gallery = $this->galleryModel->getById($exhibition['gallery_id']);
+                    $galleries[] = $gallery;
                 }
-                unset($art);
 
-                $allArts = array_merge($allArts, $artsForOneExhibition);
+                // 만약 $galleries가 없다면 이 루프에서의 $art는 dummy이므로,
+                if (!empty($targetGalleryId) && empty($galleries)) {
+                    continue;
+                }
+
+                $artist = $this->artistModel->getById($art['artist_id']);
+
+                $art['artist'] = $artist;
+                $art['galleries'] = $galleries;
+
+                $results[] = $art;
             }
 
             header('Content-Type: application/json');
-            echo json_encode($allArts, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
+            echo json_encode($results, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
 
         } catch (\Exception $e) {
             http_response_code(500);
