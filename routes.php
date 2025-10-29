@@ -261,10 +261,12 @@ elseif ($requestMethod === 'POST' && $requestUri === '/api/chats') {
     (new ChatController())->postChat();
 }
 
-/* ───────────────────────── Image ───────────────────────── */
-elseif ($requestMethod === 'POST' && $requestUri === '/api/images/generate') {
-    (new ImageController())->create();
+
+/* ───────────────────────── Image (console) ───────────────────────── */
+elseif ($requestMethod === 'POST' && $requestUri === '/api/console/images/generate') {
+    (new \Controllers\ImageGenerateConsoleController())->create();
 }
+
 
 /* ───────────────────────── 기본/404 ───────────────────────── */
 

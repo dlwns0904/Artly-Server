@@ -34,7 +34,7 @@ TXT;
                 ['role'=>'system','content'=>$system],
                 ['role'=>'user','content'=>$prompt],
             ],
-            'temperature' => 0.2
+           
         ];
 
         $resp = $this->postJson('https://api.openai.com/v1/chat/completions', $payload, [
@@ -98,51 +98,68 @@ TXT;
         return $files;
     }
 
-    public function callImagesEdits(string $model, string $prompt, array $imagePaths): ?string
-    {
-        $boundary = uniqid('frm_');
-        $headers = [
-            "Authorization: Bearer {$this->openaiKey}",
-            "Content-Type: multipart/form-data; boundary={$boundary}"
-        ];
 
-        $body = '';
-        $add = function($name, $value, $filename=null, $type=null) use (&$body, $boundary) {
-            $body .= "--{$boundary}\r\n";
-            if ($filename) {
-                $body .= "Content-Disposition: form-data; name=\"{$name}\"; filename=\"{$filename}\"\r\n";
-                if ($type) $body .= "Content-Type: {$type}\r\n";
-                $body .= "\r\n{$value}\r\n";
-            } else {
-                $body .= "Content-Disposition: form-data; name=\"{$name}\"\r\n\r\n{$value}\r\n";
-            }
-        };
+public function callImagesEdits(string $model, string $prompt, array $imagePaths): ?string
+{
+    $boundary = uniqid('frm_');
+    $headers = [
+        "Authorization: Bearer {$this->openaiKey}",
+        "Content-Type: multipart/form-data; boundary={$boundary}"
+    ];
 
-        $add('model', $model);
-        $add('prompt', $prompt);
-        $add('n', '1');
-        $add('size', '1024x1536');
-        $add('response_format', 'b64_json');
-
-        foreach ($imagePaths as $p) {
-            if (!is_file($p)) continue;
-            $bin  = file_get_contents($p);
-            $name = basename($p);
-            $type = (substr($name, -4) === '.png') ? 'image/png' : 'image/jpeg';
-            $add('image', $bin, $name, $type);
+    $body = '';
+    $add = function($name, $value, $filename=null, $type=null) use (&$body, $boundary) {
+        $body .= "--{$boundary}\r\n";
+        if ($filename) {
+            $body .= "Content-Disposition: form-data; name=\"{$name}\"; filename=\"{$filename}\"\r\n";
+            if ($type) $body .= "Content-Type: {$type}\r\n";
+            $body .= "\r\n{$value}\r\n";
+        } else {
+            $body .= "Content-Disposition: form-data; name=\"{$name}\"\r\n\r\n{$value}\r\n";
         }
-        $body .= "--{$boundary}--\r\n";
+    };
 
-        $res  = $this->rawPost('https://api.openai.com/v1/images/edits', $body, $headers);
-        $code = $res['code'];
-        $txt  = $res['body'];
+    // 필수 필드
+    $add('model', $model);
+    $add('prompt', $prompt);
+    $add('n', '1');
+    $add('size', '1024x1536'); // 세로. 가로는 1536x1024, 정사각형은 1024x1024
+    // ❌ response_format 제거 (gpt-image-1은 미지원)
 
-        if ($code >= 400) throw new \RuntimeException("OpenAI error {$code}: ".$txt);
-
-        $json = json_decode($txt, true);
-        $b64  = isset($json['data'][0]['b64_json']) ? $json['data'][0]['b64_json'] : null;
-        return $b64 ? 'data:image/png;base64,'.$b64 : null;
+    // 여러 장이면 반드시 image[]
+    foreach ($imagePaths as $p) {
+        if (!is_file($p)) continue;
+        $bin  = file_get_contents($p);
+        $name = basename($p);
+        $type = (substr($name, -4) === '.png') ? 'image/png' : 'image/jpeg';
+        $add('image[]', $bin, $name, $type);
     }
+
+    $body .= "--{$boundary}--\r\n";
+
+    $res  = $this->rawPost('https://api.openai.com/v1/images/edits', $body, $headers);
+    $code = $res['code'];
+    $txt  = $res['body'];
+
+    if ($code >= 400) {
+        throw new \RuntimeException("OpenAI error {$code}: ".$txt);
+    }
+
+    $json = json_decode($txt, true);
+
+    // ✅ 두 형태 모두 지원 (url 우선, 없으면 b64_json)
+    $data = $json['data'][0] ?? null;
+    $url  = $data['url'] ?? null;
+    $b64  = $data['b64_json'] ?? null;
+
+    if ($url) return $url;
+    if ($b64) return 'data:image/png;base64,'.$b64;
+
+    // 예외 케이스 디버깅을 위해 본문 일부 남김 (운영에서는 로그로)
+    return null;
+}
+
+
 
     public function buildImagePrompt(string $userText): string
     {

@@ -19,7 +19,7 @@ class ImageGenerateConsoleController
 
     public function __construct()
     {
-        $this->svc = new ImageGenerateModel($_ENV['openaiApiKey'], $_ENV['pixabayApiKey']);
+        $this->svc = new ImageGenerateModel($_ENV['OPENAI_API_KEY'], $_ENV['PIXABAY_API_KEY']);
     }
 
     /**
