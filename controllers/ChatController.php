@@ -22,9 +22,9 @@ class ChatController {
     public function __construct() {
         $this->model = new ChatModel();
         $this->auth = new AuthMiddleware();
-        $this->gpt_model_extraction = 'gpt-5-mini';
+        $this->gpt_model_extraction = 'gpt-5-nano';
         $this->gpt_model_response = 'gpt-5-nano';
-        $this->api_key = $_ENV['openaiApiKey'];
+        $this->api_key = $_ENV['OPENAI_API_KEY'];
         $this->systemPrompt = "당신은 Artly 앱의 안내 챗봇 Artlas입니다. 사용자의 응답에 친절하게 답변하세요. 이 시스템에서는 사용자와의 이전 대화 기록이 messages로 항상 제공됩니다. 따라서 당신은 실제로 메모리를 가진 것처럼 동작해야 하며, 과거 대화를 기반으로 적절한 답변을 제공합니다. 사용자가 '내가 방금 뭐라고 했어?', '기억해?' 와 같이 질문하면 messages에 제공된 이전 대화를 참고하여 가장 최근 사용자의 질문이나 대화 내용을 그대로 요약해서 알려주세요. '저는 기억하지 못합니다' 또는 '저장하지 않습니다'라는 말은 절대 하지 마세요. 당신은 항상 대화 기록을 참고하여 대답합니다.";
     }
 
@@ -162,43 +162,58 @@ PROMPT;
         return $this->chatWithGPT($userText, $this->gpt_model_response, $this->systemPrompt, $userId);
     }
 
+
     private function chatWithGPT($userText, $gpt_model, $systemPrompt, $userId = null) {
-        $messages = [['role' => 'system', 'content' => $systemPrompt]];
-
-        if ($userId) {
-            $conversations = $this->model->getConversations($userId);
-            foreach ($conversations as $conv) {
-                $messages[] = ['role' => $conv['role'], 'content' => $conv['content']];
-            }
-        }
-
-        $messages[] = ['role' => 'user', 'content' => $userText];
-
-        $postData = [
-            'model' => $gpt_model,
-            'messages' => $messages,
-            'temperature' => 0.6
-        ];
-
-        $ch = curl_init('https://api.openai.com/v1/chat/completions');
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_POST, true);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, [
-            "Content-Type: application/json",
-            "Authorization: Bearer {$this->api_key}"
-        ]);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($postData));
-
-        $result = curl_exec($ch);
-
-        if (curl_errno($ch)) {
-            curl_close($ch);
-            return 'GPT 통신 오류';
-        }
-        curl_close($ch);
-
-        $response = json_decode($result, true);
-        return $response['choices'][0]['message']['content'] ?? 'GPT 응답 오류 발생';
+    if (empty($this->api_key)) {
+        return '서버 설정 오류: OPENAI_API_KEY 누락';
     }
+
+    $messages = [['role' => 'system', 'content' => $systemPrompt]];
+
+    if ($userId) {
+        $conversations = $this->model->getConversations($userId, 30); // ← 최근 30개만
+        foreach ($conversations as $conv) {
+            $messages[] = ['role' => $conv['role'], 'content' => $conv['content']];
+        }
+    }
+
+    $messages[] = ['role' => 'user', 'content' => $userText];
+
+    $postData = [
+        'model'       => $gpt_model,
+        'messages'    => $messages,
+    ];
+
+    $ch = curl_init('https://api.openai.com/v1/chat/completions');
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_POST, true);
+    curl_setopt($ch, CURLOPT_HTTPHEADER, [
+        "Content-Type: application/json",
+        "Authorization: Bearer {$this->api_key}"
+    ]);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($postData));
+
+    $result = curl_exec($ch);
+    $http   = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    if (curl_errno($ch)) {
+        $err = curl_error($ch);
+        curl_close($ch);
+        error_log("[OpenAI CURL] $err");
+        return 'GPT 통신 오류';
+    }
+    curl_close($ch);
+
+    $response = json_decode($result, true);
+    if ($http >= 400 || isset($response['error'])) {
+        // ★ 서버 로그에 원문 남기기
+        error_log("[OpenAI $http] ".$result);
+        // 사용자 응답은 에러 메시지 요약
+        return $response['error']['message'] ?? ('GPT 호출 오류 (HTTP '.$http.')');
+    }
+
+    return $response['choices'][0]['message']['content'] ?? 'GPT 응답 오류 발생';
+}
+
+
 }
 

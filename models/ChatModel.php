@@ -8,18 +8,41 @@ class ChatModel {
     private $pdo;
 
     public function __construct() {
-        $this->pdo = new PDO($_ENV['dsn'], $_ENV['user'], $_ENV['password']);
-        $this->pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-    }
+        // 1) config.php (폴백용)
+        $fileConfig = [];
+        $confPath = __DIR__ . '/../config/config.php';
+        if (is_file($confPath)) {
+            $tmp = require $confPath; // ['dsn'=>'...', 'user'=>'...', 'password'=>'...']
+            if (is_array($tmp)) $fileConfig = $tmp;
+        }
 
-    # 채팅 목록
+        // 2) .env 우선 → config.php 폴백
+        $dsn      = $_ENV['DSN']        ?? $fileConfig['dsn']      ?? null;
+        $user     = $_ENV['DB_USER']    ?? $fileConfig['user']     ?? null;
+        $password = $_ENV['DB_PASSWORD']?? $fileConfig['password'] ?? null;
+
+        if (!$dsn || $user === null || $password === null) {
+            throw new \RuntimeException("DB 설정 누락: .env(DSN/DB_USER/DB_PASSWORD) 또는 config.php(dsn/user/password)를 확인하세요.");
+        }
+
+        try {
+            $this->pdo = new PDO($dsn, $user, $password, [
+                PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
+                PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+            ]);
+        } catch (PDOException $e) {
+            throw new \RuntimeException("PDO 연결 실패: ".$e->getMessage(), 0, $e);
+        }
+      }
+
+
+            # 채팅 목록
     // ChatModel.php
     public function getConversations($userId) {
     $stmt = $this->pdo->prepare("SELECT * FROM APIServer_conversation WHERE user_id = :user_id ORDER BY id ASC"); // ✅ 정렬
     $stmt->execute(['user_id' => $userId]);
     return $stmt->fetchAll(PDO::FETCH_ASSOC);
-}
-
+    }
 
     # 채팅 생성
     public function addConversations($userId, $role, $content) {
