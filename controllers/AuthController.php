@@ -97,7 +97,6 @@ class AuthController {
      *             @OA\Property(property="user_img", type="string"),
      *             @OA\Property(property="user_keyword", type="string"),
      *             @OA\Property(property="admin_flag", type="integer"),
-     *             @OA\Property(property="gallery_id", type="integer"),
      *         )
      *     ),
      *     @OA\Response(
@@ -118,7 +117,6 @@ class AuthController {
         *             @OA\Property(property="user_img", type="string"),
         *             @OA\Property(property="user_keyword", type="string"),
         *             @OA\Property(property="admin_flag", type="integer"),
-        *             @OA\Property(property="gallery_id", type="integer"),
         *             @OA\Property(property="last_login_time", type="string", format="date-time"),
         *             @OA\Property(property="reg_time", type="string", format="date-time"),
         *             @OA\Property(property="update_dttm", type="string", format="date-time")

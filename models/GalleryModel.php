@@ -50,7 +50,7 @@ class GalleryModel {
             ':phone'      => $data['gallery_phone'] ?? null,
             ':email'      => $data['gallery_email'] ?? null,
             ':homepage'   => $data['gallery_homepage'] ?? null,
-            ':sns'        => $data['gallery_sns'] ?? null,
+            ':sns' => $this->normalizeSns($data['gallery_sns'] ?? null),
             ':user_id'    => $data['user_id'] ?? null,
         ]);
 
@@ -62,46 +62,56 @@ class GalleryModel {
      * 갤러리 수정
      */
     public function update($id, $data) {
-        $sql = "
-            UPDATE APIServer_gallery SET
-                gallery_name        = :name,
-                gallery_image       = :image,
-                gallery_address     = :address,
-                gallery_start_time  = :start_time,
-                gallery_end_time    = :end_time,
-                gallery_closed_day  = :closed_day,
-                gallery_category    = :category,
-                gallery_description = :description,
-                gallery_latitude    = :latitude,
-                gallery_longitude   = :longitude,
-                gallery_phone       = :phone,
-                gallery_email       = :email,
-                gallery_homepage    = :homepage,
-                gallery_sns         = :sns
-            WHERE id = :id
-        ";
+    $fields = [
+        'gallery_name'       => ':name',
+        'gallery_image'      => ':image',
+        'gallery_address'    => ':address',
+        'gallery_start_time' => ':start_time',
+        'gallery_end_time'   => ':end_time',
+        'gallery_closed_day' => ':closed_day',
+        'gallery_category'   => ':category',
+        'gallery_description'=> ':description',
+        'gallery_latitude'   => ':latitude',
+        'gallery_longitude'  => ':longitude',
+        'gallery_phone'      => ':phone',
+        'gallery_email'      => ':email',
+        'gallery_homepage'   => ':homepage',
+        // gallery_sns는 조건부로 아래에서 추가
+    ];
 
-        $stmt = $this->pdo->prepare($sql);
-        $stmt->execute([
-            ':id'         => $id,
-            ':name'       => $data['gallery_name'],
-            ':image'      => $data['gallery_image'] ?? null,
-            ':address'    => $data['gallery_address'] ?? null,
-            ':start_time' => $data['gallery_start_time'] ?? null,
-            ':end_time'   => $data['gallery_end_time'] ?? null,
-            ':closed_day' => $data['gallery_closed_day'] ?? null,
-            ':category'   => $data['gallery_category'] ?? null,
-            ':description'=> $data['gallery_description'] ?? null,
-            ':latitude'   => $data['gallery_latitude'] ?? null,
-            ':longitude'  => $data['gallery_longitude'] ?? null,
-            ':phone'      => $data['gallery_phone'] ?? null,
-            ':email'      => $data['gallery_email'] ?? null,
-            ':homepage'   => $data['gallery_homepage'] ?? null,
-            ':sns'        => $data['gallery_sns'] ?? null,
-        ]);
+    $setParts = [];
+    foreach ($fields as $col => $ph) $setParts[] = "$col = $ph";
 
-        return $this->getById($id, $data['user_id'] ?? null);
+    $params = [
+        ':id'         => $id,
+        ':name'       => $data['gallery_name'] ?? null,
+        ':image'      => $data['gallery_image'] ?? null,
+        ':address'    => $data['gallery_address'] ?? null,
+        ':start_time' => $data['gallery_start_time'] ?? null,
+        ':end_time'   => $data['gallery_end_time'] ?? null,
+        ':closed_day' => $data['gallery_closed_day'] ?? null,
+        ':category'   => $data['gallery_category'] ?? null,
+        ':description'=> $data['gallery_description'] ?? null,
+        ':latitude'   => $data['gallery_latitude'] ?? null,
+        ':longitude'  => $data['gallery_longitude'] ?? null,
+        ':phone'      => $data['gallery_phone'] ?? null,
+        ':email'      => $data['gallery_email'] ?? null,
+        ':homepage'   => $data['gallery_homepage'] ?? null,
+    ];
+
+    // 요청 바디에 gallery_sns 키가 있을 때만 업데이트
+    if (array_key_exists('gallery_sns', $data)) {
+        $setParts[] = "gallery_sns = :sns";
+        $params[':sns'] = $this->normalizeSns($data['gallery_sns']);
     }
+
+    $sql = "UPDATE APIServer_gallery SET " . implode(', ', $setParts) . " WHERE id = :id";
+
+    $stmt = $this->pdo->prepare($sql);
+    $stmt->execute($params);
+
+    return $this->getById($id, $data['user_id'] ?? null);
+}
 
     /**
      * 갤러리 삭제
@@ -341,5 +351,61 @@ class GalleryModel {
         $stmt->execute($params);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
+
+    private function normalizeSns($snsInput) {
+    if ($snsInput === null || $snsInput === '') return null;
+
+    // 문자열이면 JSON 검증
+    if (is_string($snsInput)) {
+        $trim = trim($snsInput);
+        if ($trim === '') return null;
+        // 유효한 JSON이 아니면 예외
+        if (!json_decode($trim, true) || json_last_error() !== JSON_ERROR_NONE) {
+            throw new \InvalidArgumentException('gallery_sns는 JSON 배열이어야 합니다.');
+        }
+        $arr = json_decode($trim, true);
+    } else {
+        // 배열/객체라면 그대로 사용
+        if (!is_array($snsInput)) {
+            throw new \InvalidArgumentException('gallery_sns는 배열이어야 합니다.');
+        }
+        $arr = $snsInput;
+    }
+
+    // 스키마 검증: 배열, 최대 4개, 각 아이템 {platform,url}
+    if (count($arr) > 4) {
+        throw new \InvalidArgumentException('gallery_sns는 최대 4개까지입니다.');
+    }
+
+    $allowedPlatforms = [
+        'instagram','facebook','x','youtube','tiktok','naver_blog','kakao_channel','homepage','etc'
+    ];
+
+    $out = [];
+    foreach ($arr as $i => $item) {
+        if (!is_array($item)) {
+            throw new \InvalidArgumentException("gallery_sns[$i] 형식이 잘못되었습니다.");
+        }
+        $platform = isset($item['platform']) ? strtolower(trim($item['platform'])) : null;
+        $url = isset($item['url']) ? trim($item['url']) : null;
+
+        if ($platform === null || $url === null) {
+            throw new \InvalidArgumentException("gallery_sns[$i]는 platform, url이 필요합니다.");
+        }
+        // 플랫폼 화이트리스트(원하면 주석 처리 가능)
+        if (!in_array($platform, $allowedPlatforms, true)) {
+            throw new \InvalidArgumentException("허용되지 않는 platform: {$platform}");
+        }
+        // URL 대략 검증(선택)
+        if (!preg_match('#^https?://#i', $url)) {
+            throw new \InvalidArgumentException("gallery_sns[$i].url 형식이 잘못되었습니다.");
+        }
+        $out[] = ['platform'=>$platform, 'url'=>$url];
+    }
+
+    // JSON 문자열로 반환(한글 안전)
+    return json_encode($out, JSON_UNESCAPED_UNICODE);
+    }
+
 }
 
