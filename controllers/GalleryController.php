@@ -149,7 +149,7 @@ class GalleryController {
         }
 
         // $galleries 배열을 순회하며 각 $gallery에 전시회 정보 추가
-        foreach ($galleries as $gallery) {
+        foreach ($galleries as &$gallery) {
             // $gallery의 id조회
             $galleryId = is_object($gallery) ? $gallery->id : $gallery['id'];
             

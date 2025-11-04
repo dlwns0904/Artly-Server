@@ -48,7 +48,7 @@ class ArtController {
         if(!empty($_GET['gallery_name'])) {
             $galleryList = $this->galleryModel->getGalleries(['search' => $_GET['gallery_name']]);
             if (!empty($galleryList)) {
-                $targetGalleryId = $galleryList[0]['id'];
+                $searchTargetGalleryId = $galleryList[0]['id'];
             } else {
                 http_response_code(404);
                 header('Content-Type: application/json');
@@ -86,7 +86,7 @@ class ArtController {
             // [작가] 정보 추가
             $artists = $this->artistModel->getById($art['artist_id']);
 
-            $art['artist'] = $artist;
+            $art['artist'] = $artists;
             $art['exhibitions'] = $exhibitions;
 
             $results[] = $art;
