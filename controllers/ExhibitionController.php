@@ -193,7 +193,7 @@ class ExhibitionController {
                 $exhibition['gallery'] = $gallery;
             }
             else {
-                $exhibition['gallery'] = $null;
+                $exhibition['gallery'] = null;
             }
 
             header('Content-Type: application/json');
