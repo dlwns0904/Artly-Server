@@ -23,6 +23,7 @@ use Controllers\SessionController;
 use Controllers\LikeController;
 use Controllers\BookController;
 use Controllers\ChatController;
+use Controllers\ImageController;
 
 
 
@@ -233,6 +234,12 @@ elseif ($requestMethod === 'GET' && $requestUri === '/api/chats/me') {
 }
 elseif ($requestMethod === 'POST' && $requestUri === '/api/chats') {
     (new ChatController())->postChat();
+}
+
+
+/* ───────────────────────── Image (console) ───────────────────────── */
+elseif ($requestMethod === 'POST' && $requestUri === '/api/console/images/generate') {
+    (new \Controllers\ImageGenerateConsoleController())->create();
 }
 
 

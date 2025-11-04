@@ -2907,79 +2907,6 @@
                 }
             }
         },
-        "/api/console/images/generate": {
-            "post": {
-                "tags": [
-                    "ImageGenerate"
-                ],
-                "summary": "전시 포스터 배경 이미지 생성 (콘솔용)",
-                "operationId": "0b87b69a3394aa2f2cce1346b6ddf960",
-                "requestBody": {
-                    "required": true,
-                    "content": {
-                        "application/json": {
-                            "schema": {
-                                "required": [
-                                    "text"
-                                ],
-                                "properties": {
-                                    "text": {
-                                        "type": "string",
-                                        "example": "시간과 예술을 주제로 한 몽환적 배경"
-                                    }
-                                },
-                                "type": "object"
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "200": {
-                        "description": "성공",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "properties": {
-                                        "image": {
-                                            "type": "string",
-                                            "example": "data:image/png;base64,..."
-                                        },
-                                        "keywords": {
-                                            "type": "array",
-                                            "items": {
-                                                "type": "string"
-                                            }
-                                        },
-                                        "seedImages": {
-                                            "type": "array",
-                                            "items": {
-                                                "type": "string"
-                                            }
-                                        },
-                                        "usedPrompt": {
-                                            "type": "string"
-                                        }
-                                    },
-                                    "type": "object"
-                                }
-                            }
-                        }
-                    },
-                    "400": {
-                        "description": "요청 오류"
-                    },
-                    "404": {
-                        "description": "시드 이미지 없음"
-                    },
-                    "429": {
-                        "description": "요청 과다"
-                    },
-                    "500": {
-                        "description": "서버 오류"
-                    }
-                }
-            }
-        },
         "/api/likes": {
             "post": {
                 "tags": [
@@ -4302,10 +4229,6 @@
         {
             "name": "Gallery",
             "description": "갤러리 관련 API"
-        },
-        {
-            "name": "ImageGenerate",
-            "description": "이미지 생성 콘솔 API"
         },
         {
             "name": "Like",
