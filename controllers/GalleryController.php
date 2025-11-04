@@ -3,6 +3,7 @@ namespace Controllers;
 
 use OpenApi\Annotations as OA;
 use Models\GalleryModel;
+use Models\ExhibitionModel;
 use Middlewares\AuthMiddleware;
 
 /**
@@ -14,9 +15,11 @@ use Middlewares\AuthMiddleware;
 class GalleryController {
     private $model;
     private $auth;
+    private $exhibitionModel;
 
     public function __construct() {
         $this->model = new GalleryModel();
+        $this->exhibitionModel = new ExhibitionModel();
         $this->auth = new AuthMiddleware();
     }
 
@@ -106,7 +109,7 @@ class GalleryController {
      *     @OA\Parameter(name="latitude", in="query", @OA\Schema(type="number", format="float")),
      *     @OA\Parameter(name="longitude", in="query", @OA\Schema(type="number", format="float")),
      *     @OA\Parameter(name="distance", in="query", @OA\Schema(type="integer")),
-     *     @OA\Parameter(name="search", in="query", @OA\Schema(type="string")),
+     *     @OA\Parameter(name="search", in="query", description="gallery_name 기반 검색 시 사용", @OA\Schema(type="string")),
      *     @OA\Parameter(name="liked_only", in="query",description="내가 좋아요한 갤러리만 보기 (true/false)",required=false,@OA\Schema(type="boolean")),
      *     @OA\Response(response=200, description="조회 성공")
      * )
@@ -122,7 +125,8 @@ class GalleryController {
             echo json_encode(['message' => '로그인 후 사용 가능합니다.']);
             return;
         }
-
+        
+        // 콘솔 API 통합하며 검색을 위한 gallery_name파라미터가 search로 변경 및 통일됨
         $filters = [
             'regions'   => $_GET['regions'] ?? null,
             'type'      => $_GET['type'] ?? null,
@@ -134,9 +138,39 @@ class GalleryController {
             'user_id'   => $user_id
         ];
 
+        // gallery 정보 불러옴
         $galleries = $this->model->getGalleries($filters);
+
+        // 조회된 gallery가 없으면 빈 배열 반환함
+        if (empty($galleries)) {
+            header('Content-Type: application/json');
+            echo json_encode([], JSON_UNESCAPED_UNICODE);
+            return;
+        }
+
+        // $galleries 배열을 순회하며 각 $gallery에 전시회 정보 추가
+        foreach ($galleries as $gallery) {
+            // $gallery의 id조회
+            $galleryId = is_object($gallery) ? $gallery->id : $gallery['id'];
+            
+            // 전시회 관련 정보 및 전시회 총 개수 계산
+            $exhibitionFilters = ['gallery_id' => $galleryId];
+            $exhibitions = $this->exhibitionModel->getExhibitions($exhibitionFilters);
+            $exhibitionCount = count($exhibitions);
+
+            // $gallery에 전시회 관련 정보 추가
+            if (is_object($gallery)) {
+                $gallery->exhibitions = $exhibitions;
+                $gallery->exhibition_count = $exhibitionCount;
+            } else {
+                $gallery['exhibitions'] = $exhibitions;
+                $gallery['exhibition_count'] = $exhibitionCount;
+            }
+        }
+        unset($gallery);
+
         header('Content-Type: application/json');
-        echo json_encode($galleries, JSON_UNESCAPED_UNICODE);
+        echo json_encode($galleries, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
     }
 
       /**
@@ -155,9 +189,23 @@ class GalleryController {
         $user_id = $decoded && isset($decoded->user_id) ? $decoded->user_id : null;
 
         $gallery = $this->model->getById($id, $user_id);
+        
+        // $gallery에 전시회 관련 정보 추가
         if ($gallery) {
+            $filters = ['gallery_id' => $id];
+            $exhibitions = $this->exhibitionModel->getExhibitions($filters);
+            $exhibitionCount = count($exhibitions);
+
+            if (is_object($gallery)) {
+                $gallery->exhibitions = $exhibitions;
+                $gallery->exhibition_count = $exhibitionCount;
+            } else {
+                $gallery['exhibitions'] = $exhibitions;
+                $gallery['exhibition_count'] = $exhibitionCount;
+            }
+
             header('Content-Type: application/json');
-            echo json_encode($gallery, JSON_UNESCAPED_UNICODE);
+            echo json_encode($gallery, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
         } else {
             http_response_code(404);
             echo json_encode(['message' => 'Gallery not found']);

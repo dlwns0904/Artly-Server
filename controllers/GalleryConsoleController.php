@@ -79,6 +79,7 @@ class GalleryConsoleController {
             }
 
             // 갤러리 목록을 가져옵니다.
+            // [??????] getGalleriesBySearch가 getGallery의 subset인것 같은데 있어야 하는 이유가..?
             $galleries = $this->galleryModel->getGalleriesBySearch($filters);
 
             // 갤러리가 없으면 빈 배열 반환

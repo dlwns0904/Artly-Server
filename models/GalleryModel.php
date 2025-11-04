@@ -231,43 +231,6 @@ class GalleryModel {
         return $results;
     }
 
-   public function getById($id, $user_id = null) {
-    $sql = "
-        SELECT
-            g.id AS gallery_id,
-            g.gallery_name,
-            g.gallery_image,
-            g.gallery_address,
-            DATE_FORMAT(g.gallery_start_time, '%H:%i') AS gallery_start_time,
-            DATE_FORMAT(g.gallery_end_time, '%H:%i') AS gallery_end_time,
-            g.gallery_closed_day,
-            g.gallery_category,
-            g.gallery_description,
-            g.gallery_latitude,
-            g.gallery_longitude,
-            g.gallery_phone,
-            g.gallery_email,
-            g.gallery_homepage,
-            g.gallery_sns,
-            IFNULL(lc.like_count, 0) AS like_count,
-            IF(EXISTS (
-                SELECT 1 FROM APIServer_gallery_like l
-                WHERE l.gallery_id = g.id AND l.user_id = :user_id_for_like
-            ), 1, 0) AS is_liked,
-            e.id AS exhibition_id,
-            e.exhibition_title,
-            e.exhibition_poster,
-            e.exhibition_status
-        FROM APIServer_gallery g
-        LEFT JOIN (
-            SELECT gallery_id, COUNT(*) AS like_count
-            FROM APIServer_gallery_like
-            GROUP BY gallery_id
-        ) lc ON g.id = lc.gallery_id
-        LEFT JOIN APIServer_exhibition e
-            ON g.id = e.gallery_id AND e.exhibition_status = 'exhibited'
-        WHERE g.id = :id
-    ";
     /**
      * 갤러리 단건 조회 (+ 전시 일부 정보)
      */

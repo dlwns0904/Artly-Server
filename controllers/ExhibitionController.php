@@ -3,6 +3,7 @@ namespace Controllers;
 
 use Models\ExhibitionModel;
 use Models\UserModel;
+use Models\GalleryModel;
 use Middlewares\AuthMiddleware;
 use OpenApi\Annotations as OA;
 
@@ -14,10 +15,14 @@ use OpenApi\Annotations as OA;
  */
 class ExhibitionController {
     private $model;
+    private $userModel;
+    private $galleryModel;
+    private $auth;
 
     public function __construct() {
         $this->model = new ExhibitionModel();
         $this->userModel = new UserModel();
+        $this->galleryModel = new GalleryModel();
         $this->auth = new AuthMiddleware();
     }
 
@@ -69,6 +74,13 @@ class ExhibitionController {
      *        required=false,
      *        @OA\Schema(type="string")
      *     ),
+     *     @OA\Parameter(
+     *        name="gallery_name",
+     *        in="query",
+     *        description="갤러리명 기준 검색어",
+     *        required=false,
+     *        @OA\Schema(type="string")
+     *     ),
      *     @OA\Response(
      *         response=200,
      *         description="전시회 목록 조회 성공",
@@ -117,6 +129,20 @@ class ExhibitionController {
             'search' => $_GET['search'] ?? null
         ];
 
+        // 파라미터로 특정 gallery_name만 검색하고자 하면 검색 결과를 제한해야 하므로,        
+        if (!empty($_GET['gallery_name'])) {
+            $galleryList = $this->galleryModel->getGalleries(['search' => $_GET['gallery_name']]);
+
+            if (!empty($galleryList)) {
+                $filters['gallery_id'] = $galleryList[0]['id'];
+            } else {
+                http_response_code(404);
+                header('Content-Type: application/json');
+                echo json_encode(['message' => '해당 이름의 갤러리를 찾을 수 없습니다.'], JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
+                return;
+            }
+        }
+
         $exhibitions = $this->model->getExhibitions($filters);
         header('Content-Type: application/json');
         echo json_encode($exhibitions, JSON_UNESCAPED_UNICODE);
@@ -160,8 +186,18 @@ class ExhibitionController {
         $user_id = AuthMiddleware::getUserId();
         $exhibition = $this->model->getExhibitionDetailById($id, $user_id);
         if ($exhibition) {
+            $gallery = null;
+
+            if (!empty($exhibition['gallery_id'])) {
+                $gallery = $this->galleryModel->getGalleryById($exhibition['gallery_id']);
+                $exhibition['gallery'] = $gallery;
+            }
+            else {
+                $exhibition['gallery'] = $null;
+            }
+
             header('Content-Type: application/json');
-            echo json_encode($exhibition, JSON_UNESCAPED_UNICODE);
+            echo json_encode($exhibition, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
         } else {
             http_response_code(404);
             echo json_encode(['message' => 'Exhibition not found']);
