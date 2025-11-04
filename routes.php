@@ -12,14 +12,10 @@ if (file_exists(__DIR__ . '/.env')) {
 
 use Controllers\ArtistController;
 use Controllers\ExhibitionController;
-use Controllers\ExhibitionConsoleController;
 use Controllers\ArtController;
-use Controllers\ArtConsoleController;
 use Controllers\GalleryController;
-use Controllers\GalleryConsoleController;
 use Controllers\AnnouncementController;
 use Controllers\UserController;
-use Controllers\UserConsoleController;
 use Controllers\AuthController;
 use Controllers\SearchController;
 use Controllers\ReservationController;
@@ -80,14 +76,6 @@ elseif ($requestMethod === 'POST' && preg_match('#^/api/exhibitions/(\d+)/arts$#
 }
 
 
-/* ───────────────────────── ExhibitionConsole ───────────────────────── */
-elseif ($requestMethod === 'GET' && preg_match('#^/api/console/exhibitions$#', $requestUri)) {
-    (new ExhibitionConsoleController())->getExhibitionList();
-}
-elseif ($requestMethod === 'GET' && preg_match('#^/api/console/exhibitions/(\d+)$#', $requestUri, $m)) {
-    (new ExhibitionConsoleController())->getExhibitionById($m[1]);
-}
-
 /* ───────────────────────── Art ───────────────────────── */
 
 elseif ($requestMethod === 'GET' && preg_match('#^/api/arts/(\d+)$#', $requestUri, $m)) {
@@ -107,14 +95,6 @@ elseif ($requestMethod === 'DELETE' && preg_match('#^/api/arts/(\d+)$#', $reques
 }
 
 
-/* ───────────────────────── ArtConsole ───────────────────────── */
-elseif ($requestMethod === 'GET' && preg_match('#^/api/console/arts$#', $requestUri)) {
-    (new ArtConsoleController())->getArtList();
-}
-elseif ($requestMethod === 'GET' && preg_match('#^/api/console/arts/(\d+)$#', $requestUri, $m)) {
-    (new ArtConsoleController())->getArtById($m[1]);
-}
-
 /* ───────────────────────── Gallery ───────────────────────── */
 
 elseif ($requestMethod === 'GET' && preg_match('#^/api/galleries/(\d+)$#', $requestUri, $m)) {
@@ -133,14 +113,6 @@ elseif ($requestMethod === 'DELETE' && preg_match('#^/api/galleries/(\d+)$#', $r
     (new GalleryController())->deleteGallery($m[1]);
 }
 
-
-/* ───────────────────────── GalleryConsole ───────────────────────── */
-elseif ($requestMethod === 'GET' && preg_match('#^/api/console/galleries$#', $requestUri)) {
-    (new GalleryConsoleController())->getGalleryList();
-}
-elseif ($requestMethod === 'GET' && preg_match('#^/api/console/galleries/(\d+)$#', $requestUri, $m)) {
-    (new GalleryConsoleController())->getGalleryById($m[1]);
-}
 
 /* ───────────────────────── Announcement ───────────────────────── */
 
@@ -183,11 +155,8 @@ elseif ($requestMethod === 'GET' && $requestUri === '/api/users/me/purchases') {
 elseif ($requestMethod === 'GET' && $requestUri === '/api/users/me/likes') {
     (new UserController())->getMyLikes();
 }
-
-
-/* ───────────────────────── UserConsole ───────────────────────── */
-elseif ($requestMethod === 'GET' && preg_match('#^/api/console/users/likes$#', $requestUri)) {
-    (new UserConsoleController())->getLikedUserList();
+elseif ($requestMethod === 'GET' && preg_match('#^/api/users/console/likes$#', $requestUri)) {
+    (new UserController())->getLikedUserList();
 }
 
 
@@ -197,10 +166,12 @@ elseif ($requestMethod === 'GET' && $requestUri === '/api/search') {
     (new SearchController())->getResults();
 }
 
+
 /* ───────────────────────── Session ───────────────────────── */
 elseif ($requestMethod === 'GET' && preg_match('#^/api/exhibitions/(\d+)/sessions$#', $requestUri, $m)) {
     (new \Controllers\SessionController())->getSessionsByDate($m[1]);
 }
+
 
 /* ───────────────────────── Reservation ───────────────────────── */
 
@@ -219,6 +190,7 @@ elseif ($requestMethod === 'PATCH' && preg_match('#^/api/reservations/(\d+)$#', 
     (new ReservationController())->updateReservation($m[1]);
 }
 
+
 /* ───────────────────────── Like ───────────────────────── */
 
 elseif ($requestMethod === 'POST' && $requestUri === '/api/likes') {
@@ -227,6 +199,7 @@ elseif ($requestMethod === 'POST' && $requestUri === '/api/likes') {
 elseif ($requestMethod === 'DELETE' && $requestUri === '/api/likes') {
     (new LikeController())->deleteLike();
 }
+
 
 /* ───────────────────────── Book ───────────────────────── */
 
@@ -243,6 +216,7 @@ elseif ($requestMethod === 'DELETE' && preg_match('#^/api/books/(\d+)$#', $reque
     (new BookController())->deleteBook($m[1]);
 }
 
+
 /* ───────────────────────── User 도록 구매 ───────────────────────── */
 
 elseif ($requestMethod === 'POST' && $requestUri === '/api/users/me/books') {
@@ -251,6 +225,7 @@ elseif ($requestMethod === 'POST' && $requestUri === '/api/users/me/books') {
 elseif ($requestMethod === 'DELETE' && preg_match('#^/api/users/me/books/(\d+)$#', $requestUri, $m)) {
     (new BookController())->deletePurchasedBook($m[1]);
 }
+
 
 /* ───────────────────────── Chat ───────────────────────── */
 
