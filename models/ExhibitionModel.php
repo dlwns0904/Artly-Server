@@ -86,9 +86,8 @@ class ExhibitionModel {
     $stmt->execute($params);
     $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-    // 여기서 가공 시작
+    // 결과 조립
     $results = [];
-
     foreach ($rows as $row) {
         $results[] = [
             "id" => (int)$row['id'],
@@ -103,6 +102,11 @@ class ExhibitionModel {
             "exhibition_price" => (int)$row['exhibition_price'],
             "exhibition_tag" => $row['exhibition_tag'],
             "exhibition_status" => $row['exhibition_status'],
+
+            // ✅ 새 필드 매핑
+            "exhibition_phone" => $row['exhibition_phone'] ?? null,
+            "exhibition_homepage" => $row['exhibition_homepage'] ?? null,
+
             "create_dtm" => $row['create_dtm'],
             "update_dtm" => $row['update_dtm'],
             "like_count" => (int)$row['like_count'],
@@ -122,9 +126,9 @@ class ExhibitionModel {
             ]
         ];
     }
-
     return $results;
 }
+
 
     public function getById($id, $user_id = null) {
         $sql = "SELECT
@@ -154,22 +158,33 @@ class ExhibitionModel {
 
     public function create($data, $gallery_id) {
     $stmt = $this->pdo->prepare("INSERT INTO APIServer_exhibition
-        (exhibition_title, exhibition_poster, exhibition_category, exhibition_start_date, exhibition_end_date, exhibition_start_time, exhibition_end_time, exhibition_location, exhibition_price, gallery_id, exhibition_tag, exhibition_status, create_dtm, update_dtm)
-        VALUES (:title, :poster, :category, :start_date, :end_date, :start_time, :end_time, :location, :price, :gallery_id, :tag, :status, NOW(), NOW())");
+        (exhibition_title, exhibition_poster, exhibition_category,
+         exhibition_start_date, exhibition_end_date, exhibition_start_time, exhibition_end_time,
+         exhibition_location, exhibition_price, gallery_id, exhibition_tag, exhibition_status,
+         exhibition_phone, exhibition_homepage,              
+         create_dtm, update_dtm)
+        VALUES
+        (:title, :poster, :category,
+         :start_date, :end_date, :start_time, :end_time,
+         :location, :price, :gallery_id, :tag, :status,
+         :phone, :homepage,                                
+         NOW(), NOW())");
 
     $stmt->execute([
-        ':title' => $data['exhibition_title'],
-        ':poster' => $data['exhibition_poster'],
-        ':category' => $data['exhibition_category'],
-        ':start_date' => $data['exhibition_start_date'],
-        ':end_date' => $data['exhibition_end_date'],
-        ':start_time' => $data['exhibition_start_time'],
-        ':end_time' => $data['exhibition_end_time'],
-        ':location' => $data['exhibition_location'],
-        ':price' => $data['exhibition_price'],
-        ':gallery_id' => $gallery_id,  // <-- 여기 바뀜
-        ':tag' => $data['exhibition_tag'],
-        ':status' => $data['exhibition_status']
+        ':title'       => $data['exhibition_title'],
+        ':poster'      => $data['exhibition_poster'],
+        ':category'    => $data['exhibition_category'],
+        ':start_date'  => $data['exhibition_start_date'],
+        ':end_date'    => $data['exhibition_end_date'],
+        ':start_time'  => $data['exhibition_start_time'],
+        ':end_time'    => $data['exhibition_end_time'],
+        ':location'    => $data['exhibition_location'],
+        ':price'       => $data['exhibition_price'],
+        ':gallery_id'  => $gallery_id,
+        ':tag'         => $data['exhibition_tag'],
+        ':status'      => $data['exhibition_status'],
+        ':phone'       => $data['exhibition_phone']    ?? null,  
+        ':homepage'    => $data['exhibition_homepage'] ?? null   
     ]);
 
     $id = $this->pdo->lastInsertId();
@@ -177,6 +192,7 @@ class ExhibitionModel {
     $stmt->execute([':id' => $id]);
     return $stmt->fetch(PDO::FETCH_ASSOC);
 }
+
 
 
     public function update($id, $data, $gallery_id) {
@@ -193,25 +209,30 @@ class ExhibitionModel {
         gallery_id = :gallery_id,
         exhibition_tag = :tag,
         exhibition_status = :status,
+        exhibition_phone = :phone,                 
+        exhibition_homepage = :homepage,           
         update_dtm = NOW()
         WHERE id = :id");
 
     return $stmt->execute([
-        ':title' => $data['exhibition_title'],
-        ':poster' => $data['exhibition_poster'],
-        ':category' => $data['exhibition_category'],
+        ':title'      => $data['exhibition_title'],
+        ':poster'     => $data['exhibition_poster'],
+        ':category'   => $data['exhibition_category'],
         ':start_date' => $data['exhibition_start_date'],
-        ':end_date' => $data['exhibition_end_date'],
+        ':end_date'   => $data['exhibition_end_date'],
         ':start_time' => $data['exhibition_start_time'],
-        ':end_time' => $data['exhibition_end_time'],
-        ':location' => $data['exhibition_location'],
-        ':price' => $data['exhibition_price'],
-        ':gallery_id' => $gallery_id,   // <-- 변경됨
-        ':tag' => $data['exhibition_tag'],
-        ':status' => $data['exhibition_status'],
-        ':id' => $id
+        ':end_time'   => $data['exhibition_end_time'],
+        ':location'   => $data['exhibition_location'],
+        ':price'      => $data['exhibition_price'],
+        ':gallery_id' => $gallery_id,
+        ':tag'        => $data['exhibition_tag'],
+        ':status'     => $data['exhibition_status'],
+        ':phone'      => $data['exhibition_phone']    ?? null,  
+        ':homepage'   => $data['exhibition_homepage'] ?? null,  
+        ':id'         => $id
     ]);
 }
+
 
 
 
@@ -310,6 +331,8 @@ class ExhibitionModel {
     "update_dtm" => $exhibition['update_dtm'],
     "like_count" => (int)$exhibition['like_count'],
     "is_liked" => (bool)$exhibition['is_liked'],
+    "exhibition_phone" => $exhibition['exhibition_phone'] ?? null,
+    "exhibition_homepage" => $exhibition['exhibition_homepage'] ?? null,
 
     // 기존 갤러리 확장 필드
     "exhibition_organization" => $exhibition['gallery_name'],
