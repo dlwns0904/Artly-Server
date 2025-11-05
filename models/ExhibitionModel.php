@@ -278,7 +278,7 @@ class ExhibitionModel {
 
     // 4️⃣ 관련 전시 조회
     $stmt = $this->pdo->prepare("
-        SELECT e.id, e.exhibition_title AS title, e.exhibition_poster AS poster, e.exhibition_start_date AS start_date, e.exhibition_end_date AS end_date, g.gallery_name AS organization
+        SELECT e.id, e.exhibition_title AS title, e.exhibition_poster AS poster, e.exhibition_start_date AS start_date, e.exhibition_end_date AS end_date, g.gallery_name AS organization, e.exhibition_location AS location
         FROM APIServer_exhibition e
         JOIN APIServer_gallery g ON e.gallery_id = g.id
         WHERE e.gallery_id = :gallery_id AND e.id != :id
