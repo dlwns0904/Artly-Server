@@ -189,7 +189,7 @@ class ExhibitionController {
             $gallery = null;
 
             if (!empty($exhibition['gallery_id'])) {
-                $gallery = $this->galleryModel->getGalleryById($exhibition['gallery_id']);
+                $gallery = $this->galleryModel->getById($exhibition['gallery_id']);
                 $exhibition['gallery'] = $gallery;
             }
             else {
