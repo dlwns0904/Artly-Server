@@ -122,4 +122,54 @@ class LikeModel {
         
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
+
+
+    public function getLikesWithStatusAndCount($likedType = null, $likedTypeId, $userId) {
+        $allowedTables = [
+            'gallery' => 'APIServer_gallery_like',
+            'exhibition' => 'APIServer_exhibition_like',
+            'artist' => 'APIServer_artist_like',
+            'art' => 'APIServer_art_like'
+        ];
+        $allowedColumn = [
+            'gallery' => 'gallery_id',
+            'exhibition' => 'exhibition_id',
+            'artist' => 'artist_id',
+            'art' => 'art_id'
+        ];
+
+        // 1. $likedType 유효성 검사
+        if (is_null($likedType) || !array_key_exists($likedType, $allowedTables)) {
+            // 유효하지 않으면 빈 값 반환 (count: 0 추가)
+            return ['likes' => [], 'count' => 0, 'isLikedByUser' => false];
+        }
+
+        $tableName = $allowedTables[$likedType];
+        $columnName = $allowedColumn[$likedType];
+
+        // 2. [DB 쿼리] $likedTypeId에 해당하는 '좋아요' 목록 전부 가져오기
+        $sql = "SELECT * FROM {$tableName} WHERE {$columnName} = ?";
+        
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute([$likedTypeId]);
+        
+        $allLikes = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        // 3. [PHP 로직] 가져온 목록에서 'user_id' 컬럼만 추출
+        // (user_id 컬럼명이 다르면 이 부분을 수정하세요)
+        $userIdsWhoLiked = array_column($allLikes, 'user_id');
+        
+        // 4. [PHP 로직] 파라미터로 받은 $userId가 목록에 있는지 확인
+        $isLikedByUser = in_array($userId, $userIdsWhoLiked);
+        
+        // 5. [신규] '좋아요' 총 개수 계산
+        $totalCount = count($allLikes);
+        
+        // 6. 세 가지 정보를 모두 반환
+        return [
+            'likes' => $allLikes,          // '좋아요' 누른 사람 전체 목록 (배열)
+            'count' => $totalCount,       // (신규) '좋아요' 총 개수 (정수)
+            'isLikedByUser' => $isLikedByUser   // $userId가 눌렀는지 여부 (true/false)
+        ];
+    }
 }

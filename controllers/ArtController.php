@@ -6,18 +6,22 @@ use Models\ArtModel;
 use Models\GalleryModel;
 use Models\ExhibitionModel;
 use Models\ArtistModel;
+use Models\LikeModel;
+use Middlewares\AuthMiddleware;
 
 class ArtController {
     private $model;
     private $galleryModel;
     private $exhibitionModel;
     private $artistModel;
+    private $likeModel;
 
     public function __construct() {
         $this->model = new ArtModel();
         $this->galleryModel = new GalleryModel();
         $this->exhibitionModel = new ExhibitionModel();
         $this->artistModel = new ArtistModel();
+        $this->likeModel = new LikeModel();
     }
 
     /**
@@ -42,6 +46,7 @@ class ArtController {
      * )
      */
     public function getArtList() {
+        $userId = \Middlewares\AuthMiddleware::getUserId();
 
         // 파라미터로 특정 gallery_name만 검색하고자 하면 검색 결과를 제한해야 하므로,
         $searchTargetGalleryId = null;
@@ -86,8 +91,12 @@ class ArtController {
             // [작가] 정보 추가
             $artists = $this->artistModel->getById($art['artist_id']);
 
+            // like 관련 정보 얻어오기
+            $likesInfo = $this->likeModel->getLikesWithStatusAndCount('art', $art['id'], $userId);
+
             $art['artist'] = $artists;
             $art['exhibitions'] = $exhibitions;
+            $art['is_liked'] = $likesInfo['isLikedByUser'];
 
             $results[] = $art;
         }
@@ -107,24 +116,33 @@ class ArtController {
      * )
      */
     public function getArtById($id) {
+        $userId = \Middlewares\AuthMiddleware::getUserId();
+
         $art = $this->model->getById($id);
         
         if ($art) {
             $exhibitionIds = $this->model->getExhibitionIdByArtId($id);
             $exhibitions = [];
 
+            // [전시회>>갤러리] 정보 추가
             foreach ($exhibitionIds as $exhibitionId) {
-                $exhibitionDetail = $this->exhibitionModel->getById($exhibitionId);
-                if ($exhibitionDetail) {
-                    $exhibitions[] = $exhibitionDetail;
-                }
+                $exhibition = $this->exhibitionModel->getById($exhibitionId['exhibition_id']);
+
+                $gallery = $this->galleryModel->getById($exhibition['gallery_id']);
+                $exhibition['gallery'] = $gallery;
+
+                $exhibitions[] = $exhibition;
             }
 
-            if (is_object($art)) {
-                $art->exhibitions = $exhibitions;
-            } elseif (is_array($art)) {
-                $art['exhibitions'] = $exhibitions;
-            }
+            // [작가] 정보 추가
+            $artists = $this->artistModel->getById($art['artist_id']);
+
+            // like 관련 정보 얻어오기
+            $likesInfo = $this->likeModel->getLikesWithStatusAndCount('art', $art['id'], $userId);
+
+            $art['artist'] = $artists;
+            $art['exhibitions'] = $exhibitions;
+            $art['is_liked'] = $likesInfo['isLikedByUser'];
 
             header('Content-Type: application/json');
             echo json_encode($art, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
