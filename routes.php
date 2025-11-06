@@ -52,6 +52,13 @@ elseif ($requestMethod === 'DELETE' && preg_match('#^/api/artists/(\d+)$#', $req
 
 /* ───────────────────────── Exhibition ───────────────────────── */
 
+elseif ($requestMethod === 'GET' && preg_match('#^/api/exhibitions/(\d+)/image$#', $requestUri, $m)) {
+    (new ExhibitionController())->getImage($m[1]);
+}
+elseif ($requestMethod === 'POST' && preg_match('#^/api/exhibitions/(\d+)/image$#', $requestUri, $m)) {
+    (new ExhibitionController())->uploadImage($m[1]);
+}
+
 elseif ($requestMethod === 'GET' && preg_match('#^/api/exhibitions/(\d+)$#', $requestUri, $m)) {
     (new ExhibitionController())->getExhibitionById($m[1]);
 }
@@ -67,13 +74,13 @@ elseif ($requestMethod === 'PUT' && preg_match('#^/api/exhibitions/(\d+)$#', $re
 elseif ($requestMethod === 'DELETE' && preg_match('#^/api/exhibitions/(\d+)$#', $requestUri, $m)) {
     (new ExhibitionController())->deleteExhibition($m[1]);
 }
-
 elseif ($requestMethod === 'POST' && preg_match('#^/api/exhibitions/(\d+)/artists$#', $requestUri, $m)) {
     (new ExhibitionController())->registerArtists($m[1]);
 }
 elseif ($requestMethod === 'POST' && preg_match('#^/api/exhibitions/(\d+)/arts$#', $requestUri, $m)) {
     (new ExhibitionController())->registerArts($m[1]);
 }
+
 
 
 /* ───────────────────────── Art ───────────────────────── */
