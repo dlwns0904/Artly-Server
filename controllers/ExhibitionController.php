@@ -310,7 +310,7 @@ class ExhibitionController {
      *         ),
      *         @OA\MediaType(
      *             mediaType="multipart/form-data",
-     *             @OA.Schema(
+     *             @OA\Schema(
      *                 @OA\Property(property="exhibition_title", type="string"),
      *                 @OA\Property(property="exhibition_poster", type="string"),
      *                 @OA\Property(property="exhibition_category", type="string"),
