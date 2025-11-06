@@ -23,6 +23,11 @@ class GalleryController {
         $this->auth = new AuthMiddleware();
     }
 
+    // ★ 추가: 응답용 image_url 생성(상대 경로)
+    private function buildImageUrl($id) {               // ★ 추가
+        return "/api/galleries/{$id}/image";            // ★ 추가
+    }                                                   // ★ 추가
+
     /**
      * @OA\Post(
      *   path="/api/galleries",
@@ -116,6 +121,7 @@ class GalleryController {
             'gallery_image_mime'  => $created['gallery_image_mime'] ?? null,
             'gallery_image_name'  => $created['gallery_image_name'] ?? null,
             'gallery_image_size'  => $created['gallery_image_size'] ?? null,
+            'image_url'           => $this->buildImageUrl($created['id']),   // ★ 추가
         ], JSON_UNESCAPED_UNICODE);
         return;
     }
@@ -127,7 +133,8 @@ class GalleryController {
     http_response_code(201);
     echo json_encode([
         'id'           => $created['id'],
-        'gallery_name' => $created['gallery_name']
+        'gallery_name' => $created['gallery_name'],
+        'image_url'    => $this->buildImageUrl($created['id']),          // ★ 추가
     ], JSON_UNESCAPED_UNICODE);
 }
 
@@ -231,6 +238,15 @@ class GalleryController {
             // $gallery의 id조회
             $galleryId = is_object($gallery) ? $gallery->id : $gallery['id'];
             
+            // ★ 추가: JSON 응답에서 BLOB 제거 + image_url 부여
+            if (is_object($gallery)) {                                    // ★ 추가
+                if (isset($gallery->gallery_image)) unset($gallery->gallery_image); // ★ 추가
+                $gallery->image_url = $this->buildImageUrl($galleryId);   // ★ 추가
+            } else {                                                       // ★ 추가
+                if (isset($gallery['gallery_image'])) unset($gallery['gallery_image']); // ★ 추가
+                $gallery['image_url'] = $this->buildImageUrl($galleryId);  // ★ 추가
+            }                                                               // ★ 추가
+
             // 전시회 관련 정보 및 전시회 총 개수 계산
             $exhibitionFilters = ['gallery_id' => $galleryId];
             $exhibitions = $this->exhibitionModel->getExhibitions($exhibitionFilters);
@@ -270,6 +286,15 @@ class GalleryController {
         
         // $gallery에 전시회 관련 정보 추가
         if ($gallery) {
+            // ★ 추가: JSON 응답에서 BLOB 제거 + image_url 부여
+            if (is_object($gallery)) {                                        // ★ 추가
+                if (isset($gallery->gallery_image)) unset($gallery->gallery_image); // ★ 추가
+                $gallery->image_url = $this->buildImageUrl($id);              // ★ 추가
+            } else {                                                           // ★ 추가
+                if (isset($gallery['gallery_image'])) unset($gallery['gallery_image']); // ★ 추가
+                $gallery['image_url'] = $this->buildImageUrl($id);            // ★ 추가
+            }                                                                   // ★ 추가
+
             $filters = ['gallery_id' => $id];
             $exhibitions = $this->exhibitionModel->getExhibitions($filters);
             $exhibitionCount = count($exhibitions);
@@ -290,6 +315,30 @@ class GalleryController {
         }
     }
 
-
+    /**
+     * @OA\Get(
+     *   path="/api/galleries/{id}/image",
+     *   summary="갤러리 이미지 다운로드",
+     *   tags={"Gallery"},
+     *   @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+     *   @OA\Response(response=200, description="image binary"),
+     *   @OA\Response(response=404, description="not found")
+     * )
+     */
+    public function getGalleryImage($id) {                      // ★ 추가
+        $row = $this->model->getImageById($id);                 // ★ 추가
+        if (!$row || empty($row['gallery_image'])) {            // ★ 추가
+            http_response_code(404);                            // ★ 추가
+            echo 'Not Found';                                   // ★ 추가
+            return;                                             // ★ 추가
+        }                                                       // ★ 추가
+        $mime = $row['gallery_image_mime'] ?? 'application/octet-stream'; // ★ 추가
+        header('Content-Type: ' . $mime);                       // ★ 추가
+        if (!empty($row['gallery_image_size'])) {               // ★ 추가
+            header('Content-Length: ' . (int)$row['gallery_image_size']); // ★ 추가
+        }                                                       // ★ 추가
+        header('Cache-Control: public, max-age=31536000, immutable'); // ★ 추가
+        $img = $row['gallery_image'];                           // ★ 추가
+        if (is_resource($img)) { fpassthru($img); } else { echo $img; } // ★ 추가
+    }                                                           // ★ 추가
 }
-

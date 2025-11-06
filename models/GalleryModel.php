@@ -343,6 +343,19 @@ class GalleryModel {
         return $gallery;
     }
 
+    // ★ 추가: 이미지(BLOB)만 조회용
+    public function getImageById($id) {                         // ★ 추가
+        $sql = "                                                // ★ 추가
+            SELECT gallery_image, gallery_image_mime, gallery_image_name, gallery_image_size
+            FROM APIServer_gallery
+            WHERE id = :id
+            LIMIT 1
+        ";                                                      // ★ 추가
+        $stmt = $this->pdo->prepare($sql);                      // ★ 추가
+        $stmt->execute([':id' => $id]);                         // ★ 추가
+        return $stmt->fetch(PDO::FETCH_ASSOC);                  // ★ 추가
+    }                                                           // ★ 추가
+
     public function getGalleriesBySearch($filters = []) {
         // 1. 기본 쿼리문과 WHERE 조건절 배열, 파라미터 배열을 준비합니다.
         $sql = "SELECT * FROM APIServer_gallery";
@@ -429,4 +442,3 @@ class GalleryModel {
     }
 
 }
-
