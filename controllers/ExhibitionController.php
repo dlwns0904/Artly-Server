@@ -158,152 +158,258 @@ class ExhibitionController {
     /**
      * @OA\Post(
      *     path="/api/exhibitions",
-     *     summary="전시회 등록",
+     *     summary="전시회 등록 (JSON 또는 multipart)",
      *     tags={"Exhibition"},
-     *     security={{"bearerAuth":{}}},  
+     *     security={{"bearerAuth":{}}},
      *     @OA\RequestBody(
      *         required=true,
-     *         @OA\JsonContent(
-     *             @OA\Property(property="exhibition_title", type="string", example="빛의 정원"),
-     *             @OA\Property(property="exhibition_poster", type="string", example="example.com"),
-     *             @OA\Property(property="exhibition_category", type="string", example="회화"),
-     *             @OA\Property(property="exhibition_start_date", type="string", format="date", example="2025-07-01"),
-     *             @OA\Property(property="exhibition_end_date", type="string", format="date", example="2025-08-01"),
-     *             @OA\Property(property="exhibition_start_time", type="string", format="time", example="10:00:00"),
-     *             @OA\Property(property="exhibition_end_time", type="string", format="time", example="18:00:00"),
-     *             @OA\Property(property="exhibition_location", type="string", example="서울시 종로구"),
-     *             @OA\Property(property="exhibition_price", type="integer", example=15000),
-     *             @OA\Property(property="exhibition_tag", type="string", example="미디어아트,전통"),
-     *             @OA\Property(property="exhibition_status", type="string", enum={"scheduled", "exhibited", "ended"}, example="scheduled")
-     *         )
-     *     ),
-     *     @OA\Response(
-     *         response=201,
-     *         description="등록 성공",
-     *         @OA\JsonContent(
-     *             @OA\Property(property="message", type="string"),
-     *             @OA\Property(property="data", type="object",
-     *                  @OA\Property(property="id", type="integer"),
-     *                  @OA\Property(property="exhibition_title", type="string"),
-     *                  @OA\Property(property="exhibition_poster", type="string"),
-     *                  @OA\Property(property="exhibition_category", type="string"),
-     *                  @OA\Property(property="exhibition_start_date", type="string", format="date"),
-     *                  @OA\Property(property="exhibition_end_date", type="string", format="date"),
-     *                  @OA\Property(property="exhibition_start_time", type="string", format="time"),
-     *                  @OA\Property(property="exhibition_end_time", type="string", format="time"),
-     *                  @OA\Property(property="exhibition_location", type="string"),
-     *                  @OA\Property(property="exhibition_price", type="integer"),
-     *                  @OA\Property(property="gallery_id", type="integer"),
-     *                  @OA\Property(property="exhibition_tag", type="string"),
-     *                  @OA\Property(property="exhibition_status", type="string"),
-     *                  @OA\Property(property="create_dtm", type="string", format="date-time"),
-     *                  @OA\Property(property="update_dtm", type="string", format="date-time")
+     *         @OA\MediaType(
+     *             mediaType="application/json",
+     *             @OA\Schema(
+     *                 @OA\Property(property="exhibition_title", type="string", example="빛의 정원"),
+     *                 @OA\Property(property="exhibition_poster", type="string", example="example.com"),
+     *                 @OA\Property(property="exhibition_category", type="string", example="회화"),
+     *                 @OA\Property(property="exhibition_start_date", type="string", format="date", example="2025-07-01"),
+     *                 @OA\Property(property="exhibition_end_date", type="string", format="date", example="2025-08-01"),
+     *                 @OA\Property(property="exhibition_start_time", type="string", format="time", example="10:00:00"),
+     *                 @OA\Property(property="exhibition_end_time", type="string", format="time", example="18:00:00"),
+     *                 @OA\Property(property="exhibition_location", type="string", example="서울시 종로구"),
+     *                 @OA\Property(property="exhibition_price", type="integer", example=15000),
+     *                 @OA\Property(property="exhibition_tag", type="string", example="미디어아트,전통"),
+     *                 @OA\Property(property="exhibition_status", type="string", enum={"scheduled", "exhibited", "ended"}, example="scheduled"),
+     *                 @OA\Property(property="exhibition_phone", type="string", example="02-123-4567"),
+     *                 @OA\Property(property="exhibition_homepage", type="string", example="https://example.com")
+     *             )
+     *         ),
+     *         @OA\MediaType(
+     *             mediaType="multipart/form-data",
+     *             @OA\Schema(
+     *                 @OA\Property(property="exhibition_title", type="string"),
+     *                 @OA\Property(property="exhibition_poster", type="string"),
+     *                 @OA\Property(property="exhibition_category", type="string"),
+     *                 @OA\Property(property="exhibition_start_date", type="string", format="date"),
+     *                 @OA\Property(property="exhibition_end_date", type="string", format="date"),
+     *                 @OA\Property(property="exhibition_start_time", type="string", format="time"),
+     *                 @OA\Property(property="exhibition_end_time", type="string", format="time"),
+     *                 @OA\Property(property="exhibition_location", type="string"),
+     *                 @OA\Property(property="exhibition_price", type="integer"),
+     *                 @OA\Property(property="exhibition_tag", type="string"),
+     *                 @OA\Property(property="exhibition_status", type="string", enum={"scheduled","exhibited","ended"}),
+     *                 @OA\Property(property="exhibition_phone", type="string"),
+     *                 @OA\Property(property="exhibition_homepage", type="string"),
+     *                 @OA\Property(property="image", type="string", format="binary", description="전시 대표 이미지(BLOB)")
      *             )
      *         )
-     *     )
+     *     ),
+     *     @OA\Response(response=201, description="등록 성공")
      * )
      */
     public function createExhibition() {
-        $user = $this->auth->authenticate(); // JWT 검사
-        $userId = $user->user_id;
+    $user = $this->auth->authenticate(); // JWT 검사
+    $userId = $user->user_id;
 
-        $userData = $this->userModel->getById($userId);
-        $gallery_id = $userData['gallery_id'] ?? null;
+    $userData = $this->userModel->getById($userId);
+    $gallery_id = $userData['gallery_id'] ?? null;
 
-        if (!isset($gallery_id) || $gallery_id === null || $gallery_id <= 0) {
-            http_response_code(403);
-            echo json_encode(['message' => '권한이 없습니다.'], JSON_UNESCAPED_UNICODE);
-            exit;
-        }
+    if (!isset($gallery_id) || $gallery_id === null || $gallery_id <= 0) {
+        http_response_code(403);
+        echo json_encode(['message' => '권한이 없습니다.'], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
 
-        $data = json_decode(file_get_contents('php://input'), true);
-        $createdExhibition = $this->model->create($data, $gallery_id);
+    $contentType = $_SERVER['CONTENT_TYPE'] ?? '';
+    $isMultipart = stripos($contentType, 'multipart/form-data') !== false;
 
-        if ($createdExhibition) {
-            http_response_code(201);
-            echo json_encode(['message' => 'Exhibition created successfully', 'data' => $createdExhibition], JSON_UNESCAPED_UNICODE);
-        } else {
+    if ($isMultipart) {
+        // ✅ multipart/form-data인 경우
+        $data = [
+            'exhibition_title'       => $_POST['exhibition_title'] ?? null,
+            'exhibition_poster'      => $_POST['exhibition_poster'] ?? null,
+            'exhibition_category'    => $_POST['exhibition_category'] ?? null,
+            'exhibition_start_date'  => $_POST['exhibition_start_date'] ?? null,
+            'exhibition_end_date'    => $_POST['exhibition_end_date'] ?? null,
+            'exhibition_start_time'  => $_POST['exhibition_start_time'] ?? null,
+            'exhibition_end_time'    => $_POST['exhibition_end_time'] ?? null,
+            'exhibition_location'    => $_POST['exhibition_location'] ?? null,
+            'exhibition_price'       => $_POST['exhibition_price'] ?? null,
+            'exhibition_tag'         => $_POST['exhibition_tag'] ?? null,
+            'exhibition_status'      => $_POST['exhibition_status'] ?? 'scheduled',
+            'exhibition_phone'       => $_POST['exhibition_phone'] ?? null,
+            'exhibition_homepage'    => $_POST['exhibition_homepage'] ?? null,
+        ];
+
+        $created = $this->model->create($data, $gallery_id);
+        if (!$created) {
             http_response_code(500);
             echo json_encode(['message' => 'Failed to create exhibition']);
+            return;
         }
+
+        // ✅ 이미지 파일이 함께 올라왔다면 BLOB 저장
+        if (!empty($_FILES['image']) && $_FILES['image']['error'] === UPLOAD_ERR_OK) {
+            $tmp  = $_FILES['image']['tmp_name'];
+            $name = $_FILES['image']['name'] ?? 'upload.bin';
+            $size = filesize($tmp) ?: 0;
+            $mime = mime_content_type($tmp) ?: ($_FILES['image']['type'] ?? 'application/octet-stream');
+
+            $allowed = ['image/jpeg', 'image/png', 'image/webp'];
+            if (!in_array($mime, $allowed)) {
+                http_response_code(415);
+                echo json_encode(['message' => 'Unsupported image type']);
+                return;
+            }
+
+            $stream = fopen($tmp, 'rb');
+            $this->model->saveImageBlob((int)$created['id'], $stream, $mime, $name, (int)$size);
+        }
+
+        http_response_code(201);
+        echo json_encode(['message' => 'Exhibition created successfully', 'data' => $created], JSON_UNESCAPED_UNICODE);
+        return;
     }
+
+    // ✅ 기존 JSON 처리 로직 (유지)
+    $data = json_decode(file_get_contents('php://input'), true);
+    $createdExhibition = $this->model->create($data, $gallery_id);
+
+    if ($createdExhibition) {
+        http_response_code(201);
+        echo json_encode(['message' => 'Exhibition created successfully', 'data' => $createdExhibition], JSON_UNESCAPED_UNICODE);
+    } else {
+        http_response_code(500);
+        echo json_encode(['message' => 'Failed to create exhibition']);
+    }
+}
 
     /**
      * @OA\Put(
      *     path="/api/exhibitions/{id}",
-     *     summary="전시회 수정",
+     *     summary="전시회 수정 (JSON 또는 multipart)",
      *     tags={"Exhibition"},
-     *     security={{"bearerAuth":{}}},  
-     *     @OA\Parameter(name="id", in="path", required=true, description="수정할 전시회 ID", @OA\Schema(type="integer")),
+     *     security={{"bearerAuth":{}}},
+     *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
      *     @OA\RequestBody(
      *         required=true,
-     *         @OA\JsonContent(
-     *             @OA\Property(property="exhibition_title", type="string", example="빛의 정원"),
-     *             @OA\Property(property="exhibition_poster", type="string", example="example.com"),
-     *             @OA\Property(property="exhibition_category", type="string", example="회화"),
-     *             @OA\Property(property="exhibition_start_date", type="string", format="date", example="2025-07-01"),
-     *             @OA\Property(property="exhibition_end_date", type="string", format="date", example="2025-08-01"),
-     *             @OA\Property(property="exhibition_start_time", type="string", format="time", example="10:00:00"),
-     *             @OA\Property(property="exhibition_end_time", type="string", format="time", example="18:00:00"),
-     *             @OA\Property(property="exhibition_location", type="string", example="서울시 종로구"),
-     *             @OA\Property(property="exhibition_price", type="integer", example=15000),
-     *             @OA\Property(property="exhibition_tag", type="string", example="미디어아트,전통"),
-     *             @OA\Property(property="exhibition_status", type="string", enum={"scheduled", "exhibited", "ended"}, example="scheduled")
-     *         )
-     *     ),
-     *     @OA\Response(
-     *         response=200,
-     *         description="수정 성공",
-     *         @OA\JsonContent(
-     *             @OA\Property(property="message", type="string"),
-     *             @OA\Property(property="data", type="object",
-     *                  @OA\Property(property="id", type="integer"),
-     *                  @OA\Property(property="exhibition_title", type="string"),
-     *                  @OA\Property(property="exhibition_poster", type="string"),
-     *                  @OA\Property(property="exhibition_category", type="string"),
-     *                  @OA\Property(property="exhibition_start_date", type="string", format="date"),
-     *                  @OA\Property(property="exhibition_end_date", type="string", format="date"),
-     *                  @OA\Property(property="exhibition_start_time", type="string", format="time"),
-     *                  @OA\Property(property="exhibition_end_time", type="string", format="time"),
-     *                  @OA\Property(property="exhibition_location", type="string"),
-     *                  @OA\Property(property="exhibition_price", type="integer"),
-     *                  @OA\Property(property="gallery_id", type="integer"),
-     *                  @OA\Property(property="exhibition_tag", type="string"),
-     *                  @OA\Property(property="exhibition_status", type="string"),
-     *                  @OA\Property(property="create_dtm", type="string", format="date-time"),
-     *                  @OA\Property(property="update_dtm", type="string", format="date-time")
+     *         @OA\MediaType(
+     *             mediaType="application/json",
+     *             @OA\Schema(
+     *                 @OA\Property(property="exhibition_title", type="string"),
+     *                 @OA\Property(property="exhibition_poster", type="string"),
+     *                 @OA\Property(property="exhibition_category", type="string"),
+     *                 @OA\Property(property="exhibition_start_date", type="string", format="date"),
+     *                 @OA\Property(property="exhibition_end_date", type="string", format="date"),
+     *                 @OA\Property(property="exhibition_start_time", type="string", format="time"),
+     *                 @OA\Property(property="exhibition_end_time", type="string", format="time"),
+     *                 @OA\Property(property="exhibition_location", type="string"),
+     *                 @OA\Property(property="exhibition_price", type="integer"),
+     *                 @OA\Property(property="exhibition_tag", type="string"),
+     *                 @OA\Property(property="exhibition_status", type="string", enum={"scheduled","exhibited","ended"}),
+     *                 @OA\Property(property="exhibition_phone", type="string"),
+     *                 @OA\Property(property="exhibition_homepage", type="string")
+     *             )
+     *         ),
+     *         @OA\MediaType(
+     *             mediaType="multipart/form-data",
+     *             @OA.Schema(
+     *                 @OA\Property(property="exhibition_title", type="string"),
+     *                 @OA\Property(property="exhibition_poster", type="string"),
+     *                 @OA\Property(property="exhibition_category", type="string"),
+     *                 @OA\Property(property="exhibition_start_date", type="string", format="date"),
+     *                 @OA\Property(property="exhibition_end_date", type="string", format="date"),
+     *                 @OA\Property(property="exhibition_start_time", type="string", format="time"),
+     *                 @OA\Property(property="exhibition_end_time", type="string", format="time"),
+     *                 @OA\Property(property="exhibition_location", type="string"),
+     *                 @OA\Property(property="exhibition_price", type="integer"),
+     *                 @OA\Property(property="exhibition_tag", type="string"),
+     *                 @OA\Property(property="exhibition_status", type="string", enum={"scheduled","exhibited","ended"}),
+     *                 @OA\Property(property="exhibition_phone", type="string"),
+     *                 @OA\Property(property="exhibition_homepage", type="string"),
+     *                 @OA\Property(property="image", type="string", format="binary", description="전시 대표 이미지(BLOB, 선택)")
      *             )
      *         )
      *     ),
-     *     @OA\Response(response=404, description="전시회 없음")
+     *     @OA\Response(response=200, description="수정 성공")
      * )
      */
     public function updateExhibition($id) {
-        $user = $this->auth->authenticate();
-        $userId = $user->user_id;
+    $user = $this->auth->authenticate();
+    $userId = $user->user_id;
 
-        $userData = $this->userModel->getById($userId);
-        $exhibition = $this->model->getById($id);
+    $userData = $this->userModel->getById($userId);
+    $exhibition = $this->model->getById($id);
 
-        if ($userData['gallery_id'] != $exhibition['gallery_id']) {
-            http_response_code(403);
-            echo json_encode(['message' => '권한이 없습니다.'], JSON_UNESCAPED_UNICODE);
-            exit;
+    if (!$exhibition) {
+        http_response_code(404);
+        echo json_encode(['message' => 'Exhibition not found']);
+        return;
+    }
+
+    if ($userData['gallery_id'] != $exhibition['gallery_id']) {
+        http_response_code(403);
+        echo json_encode(['message' => '권한이 없습니다.'], JSON_UNESCAPED_UNICODE);
+        return;
+    }
+
+    $contentType = $_SERVER['CONTENT_TYPE'] ?? '';
+    $isMultipart = stripos($contentType, 'multipart/form-data') !== false;
+
+    if ($isMultipart) {
+        // ✅ multipart/form-data일 경우
+        $data = [
+            'exhibition_title'       => $_POST['exhibition_title'] ?? $exhibition['exhibition_title'],
+            'exhibition_poster'      => $_POST['exhibition_poster'] ?? $exhibition['exhibition_poster'],
+            'exhibition_category'    => $_POST['exhibition_category'] ?? $exhibition['exhibition_category'],
+            'exhibition_start_date'  => $_POST['exhibition_start_date'] ?? $exhibition['exhibition_start_date'],
+            'exhibition_end_date'    => $_POST['exhibition_end_date'] ?? $exhibition['exhibition_end_date'],
+            'exhibition_start_time'  => $_POST['exhibition_start_time'] ?? $exhibition['exhibition_start_time'],
+            'exhibition_end_time'    => $_POST['exhibition_end_time'] ?? $exhibition['exhibition_end_time'],
+            'exhibition_location'    => $_POST['exhibition_location'] ?? $exhibition['exhibition_location'],
+            'exhibition_price'       => $_POST['exhibition_price'] ?? $exhibition['exhibition_price'],
+            'exhibition_tag'         => $_POST['exhibition_tag'] ?? $exhibition['exhibition_tag'],
+            'exhibition_status'      => $_POST['exhibition_status'] ?? $exhibition['exhibition_status'],
+            'exhibition_phone'       => $_POST['exhibition_phone'] ?? $exhibition['exhibition_phone'],
+            'exhibition_homepage'    => $_POST['exhibition_homepage'] ?? $exhibition['exhibition_homepage'],
+        ];
+
+        $success = $this->model->update($id, $data, $exhibition['gallery_id']);
+
+        // ✅ 이미지가 있으면 교체
+        if (!empty($_FILES['image']) && $_FILES['image']['error'] === UPLOAD_ERR_OK) {
+            $tmp  = $_FILES['image']['tmp_name'];
+            $name = $_FILES['image']['name'] ?? 'upload.bin';
+            $size = filesize($tmp) ?: 0;
+            $mime = mime_content_type($tmp) ?: ($_FILES['image']['type'] ?? 'application/octet-stream');
+
+            $allowed = ['image/jpeg', 'image/png', 'image/webp'];
+            if (in_array($mime, $allowed)) {
+                $stream = fopen($tmp, 'rb');
+                $this->model->saveImageBlob((int)$id, $stream, $mime, $name, (int)$size);
+            }
         }
 
-        $data = json_decode(file_get_contents('php://input'), true);
-        $gallery_id = $exhibition['gallery_id'];
-        $success = $this->model->update($id, $data, $gallery_id);
-
         if ($success) {
-            $updatedExhibition = $this->model->getById($id);
-            echo json_encode(['message' => 'Exhibition updated successfully', 'data' => $updatedExhibition], JSON_UNESCAPED_UNICODE);
+            $updated = $this->model->getById($id);
+            echo json_encode(['message' => 'Exhibition updated successfully', 'data' => $updated], JSON_UNESCAPED_UNICODE);
         } else {
             http_response_code(404);
             echo json_encode(['message' => 'Exhibition not found or update failed']);
         }
+        return;
     }
 
+    // ✅ 기존 JSON 처리 (유지)
+    $data = json_decode(file_get_contents('php://input'), true);
+    $gallery_id = $exhibition['gallery_id'];
+    $success = $this->model->update($id, $data, $gallery_id);
+
+    if ($success) {
+        $updatedExhibition = $this->model->getById($id);
+        echo json_encode(['message' => 'Exhibition updated successfully', 'data' => $updatedExhibition], JSON_UNESCAPED_UNICODE);
+    } else {
+        http_response_code(404);
+        echo json_encode(['message' => 'Exhibition not found or update failed']);
+    }
+}
     /**
      * @OA\Delete(
      *     path="/api/exhibitions/{id}",
