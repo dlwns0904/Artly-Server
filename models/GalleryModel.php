@@ -345,7 +345,7 @@ class GalleryModel {
 
     // ★ 추가: 이미지(BLOB)만 조회용
     public function getImageById($id) {                         // ★ 추가
-        $sql = "                                                // ★ 추가
+        $sql = "                                                
             SELECT gallery_image, gallery_image_mime, gallery_image_name, gallery_image_size
             FROM APIServer_gallery
             WHERE id = :id
