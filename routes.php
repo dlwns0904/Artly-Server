@@ -96,6 +96,10 @@ elseif ($requestMethod === 'DELETE' && preg_match('#^/api/arts/(\d+)$#', $reques
 
 
 /* ───────────────────────── Gallery ───────────────────────── */
+elseif ($requestMethod === 'GET' && preg_match('#^/api/galleries/(\d+)/image$#', $requestUri, $m)) {
+    (new GalleryController())->getGalleryImage($m[1]);
+}
+
 
 elseif ($requestMethod === 'GET' && preg_match('#^/api/galleries/(\d+)$#', $requestUri, $m)) {
     (new GalleryController())->getGalleryById($m[1]);
@@ -112,6 +116,7 @@ elseif ($requestMethod === 'PUT' && preg_match('#^/api/galleries/(\d+)$#', $requ
 elseif ($requestMethod === 'DELETE' && preg_match('#^/api/galleries/(\d+)$#', $requestUri, $m)) {
     (new GalleryController())->deleteGallery($m[1]);
 }
+
 
 
 /* ───────────────────────── Announcement ───────────────────────── */
