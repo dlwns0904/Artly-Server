@@ -520,69 +520,7 @@ class ExhibitionController {
         }
     }
 
-    /**
-     * @OA\Post(
-     *     path="/api/exhibitions/{id}/image",
-     *     summary="전시회 대표 이미지 업로드 (BLOB)",
-     *     tags={"Exhibition"},
-     *     security={{"bearerAuth":{}}}, 
-     *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
-     *     @OA\RequestBody(
-     *         required=true,
-     *         @OA\MediaType(
-     *             mediaType="multipart/form-data",
-     *             @OA\Schema(
-     *                 @OA\Property(property="image", type="string", format="binary")
-     *             )
-     *         )
-     *     ),
-     *     @OA\Response(response=200, description="업로드 성공")
-     * )
-     */
-    public function uploadImage($id) {
-        $user = $this->auth->authenticate();
-        $userId = $user->user_id;
-
-        $userData = $this->userModel->getById($userId);
-        $exhibition = $this->model->getById($id);
-        if (!$exhibition) {
-            http_response_code(404);
-            echo json_encode(['message' => 'Exhibition not found']); return;
-        }
-        if ($userData['gallery_id'] != $exhibition['gallery_id']) {
-            http_response_code(403);
-            echo json_encode(['message' => '권한이 없습니다.'], JSON_UNESCAPED_UNICODE); return;
-        }
-
-        if (empty($_FILES['image']) || $_FILES['image']['error'] !== UPLOAD_ERR_OK) {
-            http_response_code(400);
-            echo json_encode(['message' => 'image file required']); return;
-        }
-
-        $tmpPath = $_FILES['image']['tmp_name'];
-        $origName = $_FILES['image']['name'] ?? 'upload.bin';
-        $size = filesize($tmpPath) ?: 0;
-        $mime = mime_content_type($tmpPath) ?: ($_FILES['image']['type'] ?? 'application/octet-stream');
-
-        // (선택) MIME 제한
-        $allowed = ['image/jpeg','image/png','image/webp','image/gif'];
-        if (!in_array($mime, $allowed)) {
-            http_response_code(415);
-            echo json_encode(['message' => 'Unsupported media type']); return;
-        }
-
-        $stream = fopen($tmpPath, 'rb');
-        $this->model->saveImageBlob((int)$id, $stream, $mime, $origName, (int)$size);
-
-        echo json_encode([
-            'ok' => true,
-            'exhibition_id' => (int)$id,
-            'size' => (int)$size,
-            'mime' => $mime,
-            'name' => $origName
-        ]);
-    }
-
+   
     /**
      * @OA\Get(
      *     path="/api/exhibitions/{id}/image",

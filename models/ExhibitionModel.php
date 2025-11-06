@@ -115,6 +115,8 @@ class ExhibitionModel {
                 "like_count" => (int)$row['like_count'],
                 "is_liked" => (bool)$row['is_liked'],
                 "gallery_id" => (int)$row['gallery_id'],
+
+                "image_url" => "/api/exhibitions/" . $row['id'] . "/image",
                 "exhibition_organization" => [
                     "name" => $row['gallery_name'],
                     "image" => $row['gallery_image'] ?? null,
@@ -325,6 +327,7 @@ class ExhibitionModel {
             "is_liked" => (bool)$exhibition['is_liked'],
             "exhibition_phone" => $exhibition['exhibition_phone'] ?? null,
             "exhibition_homepage" => $exhibition['exhibition_homepage'] ?? null,
+            "image_url" => "/api/exhibitions/" . $exhibition['id'] . "/image",
             "exhibition_organization" => $exhibition['gallery_name'],
             "exhibition_closed_day" => $exhibition['gallery_closed_day'],
             "exhibition_description" => $exhibition['gallery_description'],

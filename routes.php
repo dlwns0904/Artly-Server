@@ -55,9 +55,6 @@ elseif ($requestMethod === 'DELETE' && preg_match('#^/api/artists/(\d+)$#', $req
 elseif ($requestMethod === 'GET' && preg_match('#^/api/exhibitions/(\d+)/image$#', $requestUri, $m)) {
     (new ExhibitionController())->getImage($m[1]);
 }
-elseif ($requestMethod === 'POST' && preg_match('#^/api/exhibitions/(\d+)/image$#', $requestUri, $m)) {
-    (new ExhibitionController())->uploadImage($m[1]);
-}
 
 elseif ($requestMethod === 'GET' && preg_match('#^/api/exhibitions/(\d+)$#', $requestUri, $m)) {
     (new ExhibitionController())->getExhibitionById($m[1]);
