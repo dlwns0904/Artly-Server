@@ -58,6 +58,9 @@ class GalleryController {
     public function createGallery() {
     $contentType = $_SERVER['CONTENT_TYPE'] ?? '';
 
+    // 항상 JSON으로 응답
+    header('Content-Type: application/json; charset=utf-8');
+
     if (stripos($contentType, 'multipart/form-data') !== false) {
         $post = $_POST;
         $file = $_FILES['gallery_image'] ?? null;
@@ -79,7 +82,6 @@ class GalleryController {
             return;
         }
 
-        // 모델에 전달할 데이터(파일 스트림 + 메타)
         $data = [
             'gallery_name'        => $post['gallery_name']        ?? null,
             'gallery_address'     => $post['gallery_address']     ?? null,
@@ -96,26 +98,37 @@ class GalleryController {
             'gallery_sns'         => $post['gallery_sns']         ?? null,
             'user_id'             => $post['user_id']             ?? null,
 
-            // BLOB 입력용
+            // BLOB
             'gallery_image_stream'=> fopen($file['tmp_name'], 'rb'),
             'gallery_image_mime'  => $mime,
             'gallery_image_name'  => $file['name'],
             'gallery_image_size'  => (int)$file['size'],
         ];
 
-        $created = $this->model->create($data);   // ← 메서드 이름 유지!
+        $created = $this->model->create($data); // ← 메서드명 유지
         if (is_resource($data['gallery_image_stream'])) fclose($data['gallery_image_stream']);
 
+        // BLOB은 응답에서 제외하고, id/메타만 리턴
         http_response_code(201);
-        echo json_encode($created, JSON_UNESCAPED_UNICODE);
+        echo json_encode([
+            'id'                  => $created['id'],
+            'gallery_name'        => $created['gallery_name'],
+            'gallery_image_mime'  => $created['gallery_image_mime'] ?? null,
+            'gallery_image_name'  => $created['gallery_image_name'] ?? null,
+            'gallery_image_size'  => $created['gallery_image_size'] ?? null,
+        ], JSON_UNESCAPED_UNICODE);
         return;
     }
 
-    // (폴백) JSON 바디도 그대로 지원
+    // (폴백) JSON 경로
     $data = json_decode(file_get_contents("php://input"), true) ?: [];
     $created = $this->model->create($data);
+
     http_response_code(201);
-    echo json_encode($created, JSON_UNESCAPED_UNICODE);
+    echo json_encode([
+        'id'           => $created['id'],
+        'gallery_name' => $created['gallery_name']
+    ], JSON_UNESCAPED_UNICODE);
 }
 
     /**
