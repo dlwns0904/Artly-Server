@@ -17,46 +17,61 @@ class GalleryModel {
      * 갤러리 생성
      */
     public function create($data) {
-        $sql = "
-            INSERT INTO APIServer_gallery (
-                gallery_name, gallery_image, gallery_address,
-                gallery_start_time, gallery_end_time, gallery_closed_day,
-                gallery_category, gallery_description,
-                gallery_latitude, gallery_longitude,
-                gallery_phone, gallery_email, gallery_homepage, gallery_sns,
-                user_id
-            ) VALUES (
-                :name, :image, :address,
-                :start_time, :end_time, :closed_day,
-                :category, :description,
-                :latitude, :longitude,
-                :phone, :email, :homepage, :sns,
-                :user_id
-            )
-        ";
+    $sql = "
+        INSERT INTO APIServer_gallery (
+            gallery_name, gallery_image, gallery_image_mime, gallery_image_name, gallery_image_size,
+            gallery_address, gallery_start_time, gallery_end_time, gallery_closed_day,
+            gallery_category, gallery_description,
+            gallery_latitude, gallery_longitude,
+            gallery_phone, gallery_email, gallery_homepage, gallery_sns,
+            user_id
+        ) VALUES (
+            :name, :image, :image_mime, :image_name, :image_size,
+            :address, :start_time, :end_time, :closed_day,
+            :category, :description,
+            :latitude, :longitude,
+            :phone, :email, :homepage, :sns,
+            :user_id
+        )
+    ";
 
-        $stmt = $this->pdo->prepare($sql);
-        $stmt->execute([
-            ':name'       => $data['gallery_name'],
-            ':image'      => $data['gallery_image'] ?? null,
-            ':address'    => $data['gallery_address'] ?? null,
-            ':start_time' => $data['gallery_start_time'] ?? null,
-            ':end_time'   => $data['gallery_end_time'] ?? null,
-            ':closed_day' => $data['gallery_closed_day'] ?? null,
-            ':category'   => $data['gallery_category'] ?? null,
-            ':description'=> $data['gallery_description'] ?? null,
-            ':latitude'   => $data['gallery_latitude'] ?? null,
-            ':longitude'  => $data['gallery_longitude'] ?? null,
-            ':phone'      => $data['gallery_phone'] ?? null,
-            ':email'      => $data['gallery_email'] ?? null,
-            ':homepage'   => $data['gallery_homepage'] ?? null,
-            ':sns' => $this->normalizeSns($data['gallery_sns'] ?? null),
-            ':user_id'    => $data['user_id'] ?? null,
-        ]);
+    $stmt = $this->pdo->prepare($sql);
 
-        $id = $this->pdo->lastInsertId();
-        return $this->getById($id, $data['user_id'] ?? null);
+    // 공통(문자열/숫자)
+    $stmt->bindValue(':name',        $data['gallery_name']        ?? null);
+    $stmt->bindValue(':address',     $data['gallery_address']     ?? null);
+    $stmt->bindValue(':start_time',  $data['gallery_start_time']  ?? null);
+    $stmt->bindValue(':end_time',    $data['gallery_end_time']    ?? null);
+    $stmt->bindValue(':closed_day',  $data['gallery_closed_day']  ?? null);
+    $stmt->bindValue(':category',    $data['gallery_category']    ?? null);
+    $stmt->bindValue(':description', $data['gallery_description'] ?? null);
+    $stmt->bindValue(':latitude',    $data['gallery_latitude']    ?? null);
+    $stmt->bindValue(':longitude',   $data['gallery_longitude']   ?? null);
+    $stmt->bindValue(':phone',       $data['gallery_phone']       ?? null);
+    $stmt->bindValue(':email',       $data['gallery_email']       ?? null);
+    $stmt->bindValue(':homepage',    $data['gallery_homepage']    ?? null);
+    $stmt->bindValue(':sns',         $this->normalizeSns($data['gallery_sns'] ?? null));
+    $stmt->bindValue(':user_id',     $data['user_id']             ?? null);
+
+    // BLOB/메타: 멀티파트면 스트림 존재
+    if (!empty($data['gallery_image_stream'])) {
+        $stmt->bindValue(':image',      $data['gallery_image_stream'], \PDO::PARAM_LOB);
+        $stmt->bindValue(':image_mime', $data['gallery_image_mime'] ?? null);
+        $stmt->bindValue(':image_name', $data['gallery_image_name'] ?? null);
+        $stmt->bindValue(':image_size', (int)($data['gallery_image_size'] ?? 0), \PDO::PARAM_INT);
+    } else {
+        // (폴백) JSON 경로/문자열로 들어오던 기존 케이스 지원
+        $stmt->bindValue(':image',      null, \PDO::PARAM_NULL);
+        $stmt->bindValue(':image_mime', null, \PDO::PARAM_NULL);
+        $stmt->bindValue(':image_name', null, \PDO::PARAM_NULL);
+        $stmt->bindValue(':image_size', null, \PDO::PARAM_NULL);
     }
+
+    $stmt->execute();
+
+    $id = $this->pdo->lastInsertId();
+    return $this->getById($id, $data['user_id'] ?? null);
+}
 
     /**
      * 갤러리 수정

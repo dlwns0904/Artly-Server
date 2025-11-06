@@ -25,33 +25,98 @@ class GalleryController {
 
     /**
      * @OA\Post(
-     *     path="/api/galleries",
-     *     summary="갤러리 생성",
-     *     tags={"Gallery"},
-     *     @OA\RequestBody(
-     *         required=true,
-     *         @OA\JsonContent(
-     *             @OA\Property(property="gallery_name", type="string"),
-     *             @OA\Property(property="gallery_image", type="string"),
-     *             @OA\Property(property="gallery_address", type="string"),
-     *             @OA\Property(property="gallery_start_time", type="string"),
-     *             @OA\Property(property="gallery_end_time", type="string"),
-     *             @OA\Property(property="gallery_closed_day", type="string"),
-     *             @OA\Property(property="gallery_category", type="string"),
-     *             @OA\Property(property="gallery_description", type="string"),
-     *             @OA\Property(property="gallery_latitude", type="number", format="float"),
-     *             @OA\Property(property="gallery_longitude", type="number", format="float")
-     *         )
-     *     ),
-     *     @OA\Response(response=201, description="갤러리 생성 완료")
+     *   path="/api/galleries",
+     *   summary="갤러리 생성",
+     *   tags={"Gallery"},
+     *   @OA\RequestBody(
+     *     required=true,
+     *     @OA\MediaType(
+     *       mediaType="multipart/form-data",
+     *       @OA\Schema(
+     *         type="object",
+     *         required={"gallery_name","gallery_image"},
+     *         @OA\Property(property="gallery_name", type="string"),
+     *         @OA\Property(property="gallery_image", type="string", format="binary"),
+     *         @OA\Property(property="gallery_address", type="string"),
+     *         @OA\Property(property="gallery_start_time", type="string"),
+     *         @OA\Property(property="gallery_end_time", type="string"),
+     *         @OA\Property(property="gallery_closed_day", type="string"),
+     *         @OA\Property(property="gallery_category", type="string"),
+     *         @OA\Property(property="gallery_description", type="string"),
+     *         @OA\Property(property="gallery_latitude", type="number", format="float"),
+     *         @OA\Property(property="gallery_longitude", type="number", format="float"),
+     *         @OA\Property(property="gallery_phone", type="string"),
+     *         @OA\Property(property="gallery_email", type="string"),
+     *         @OA\Property(property="gallery_homepage", type="string"),
+     *         @OA\Property(property="gallery_sns", type="string", description="JSON 문자열")
+     *       )
+     *     )
+     *   ),
+     *   @OA\Response(response=201, description="갤러리 생성 완료")
      * )
      */
     public function createGallery() {
-        $data = json_decode(file_get_contents("php://input"), true);
-        $created = $this->model->create($data);
+    $contentType = $_SERVER['CONTENT_TYPE'] ?? '';
+
+    if (stripos($contentType, 'multipart/form-data') !== false) {
+        $post = $_POST;
+        $file = $_FILES['gallery_image'] ?? null;
+
+        if (!$file || $file['error'] !== UPLOAD_ERR_OK) {
+            http_response_code(400);
+            echo json_encode(['error' => '이미지 업로드 실패'], JSON_UNESCAPED_UNICODE);
+            return;
+        }
+
+        // MIME 검증
+        $finfo = finfo_open(FILEINFO_MIME_TYPE);
+        $mime  = finfo_file($finfo, $file['tmp_name']);
+        finfo_close($finfo);
+        $allowed = ['image/jpeg','image/png','image/webp','image/gif'];
+        if (!in_array($mime, $allowed, true)) {
+            http_response_code(400);
+            echo json_encode(['error' => '지원하지 않는 이미지 타입'], JSON_UNESCAPED_UNICODE);
+            return;
+        }
+
+        // 모델에 전달할 데이터(파일 스트림 + 메타)
+        $data = [
+            'gallery_name'        => $post['gallery_name']        ?? null,
+            'gallery_address'     => $post['gallery_address']     ?? null,
+            'gallery_start_time'  => $post['gallery_start_time']  ?? null,
+            'gallery_end_time'    => $post['gallery_end_time']    ?? null,
+            'gallery_closed_day'  => $post['gallery_closed_day']  ?? null,
+            'gallery_category'    => $post['gallery_category']    ?? null,
+            'gallery_description' => $post['gallery_description'] ?? null,
+            'gallery_latitude'    => $post['gallery_latitude']    ?? null,
+            'gallery_longitude'   => $post['gallery_longitude']   ?? null,
+            'gallery_phone'       => $post['gallery_phone']       ?? null,
+            'gallery_email'       => $post['gallery_email']       ?? null,
+            'gallery_homepage'    => $post['gallery_homepage']    ?? null,
+            'gallery_sns'         => $post['gallery_sns']         ?? null,
+            'user_id'             => $post['user_id']             ?? null,
+
+            // BLOB 입력용
+            'gallery_image_stream'=> fopen($file['tmp_name'], 'rb'),
+            'gallery_image_mime'  => $mime,
+            'gallery_image_name'  => $file['name'],
+            'gallery_image_size'  => (int)$file['size'],
+        ];
+
+        $created = $this->model->create($data);   // ← 메서드 이름 유지!
+        if (is_resource($data['gallery_image_stream'])) fclose($data['gallery_image_stream']);
+
         http_response_code(201);
         echo json_encode($created, JSON_UNESCAPED_UNICODE);
+        return;
     }
+
+    // (폴백) JSON 바디도 그대로 지원
+    $data = json_decode(file_get_contents("php://input"), true) ?: [];
+    $created = $this->model->create($data);
+    http_response_code(201);
+    echo json_encode($created, JSON_UNESCAPED_UNICODE);
+}
 
     /**
      * @OA\Put(
