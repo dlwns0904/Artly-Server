@@ -1,5 +1,6 @@
 <?php
 namespace Controllers;
+
 use OpenApi\Annotations as OA;
 
 use Models\ArtModel;
@@ -49,6 +50,7 @@ class ArtController {
     public function getArtList() {
         $userId = \Middlewares\AuthMiddleware::getUserId();
 
+        // gallery_name 존재 시 해당 갤러리의 작품만 보이도록 사전 필터
         $searchTargetGalleryId = null;
         if (!empty($_GET['gallery_name'])) {
             $galleryList = $this->galleryModel->getGalleries(['search' => $_GET['gallery_name']]);
@@ -56,8 +58,8 @@ class ArtController {
                 $searchTargetGalleryId = $galleryList[0]['id'];
             } else {
                 http_response_code(404);
-                header('Content-Type: application/json');
-                echo json_encode(['message' => '해당 이름의 갤러리를 찾을 수 없습니다.'], JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
+                header('Content-Type: application/json; charset=utf-8');
+                echo json_encode(['message' => '해당 이름의 갤러리를 찾을 수 없습니다.'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT);
                 return;
             }
         }
@@ -66,6 +68,7 @@ class ArtController {
         $arts = $this->model->getAll();
 
         foreach ($arts as $art) {
+            // 전시회 정보
             $exhibitionIds = $this->model->getExhibitionIdByArtId($art['id']);
             $exhibitions = [];
 
@@ -79,11 +82,17 @@ class ArtController {
                 $exhibitions[] = $exhibition;
             }
 
+            // 작가/좋아요
             $artists = $this->artistModel->getById($art['artist_id']);
             $likesInfo = $this->likeModel->getLikesWithStatusAndCount('art', $art['id'], $userId);
 
-            // blob 존재 시 URL 추가
-            $art['art_image_url'] = $this->model->hasImage($art) ? ("/api/arts/{$art['id']}/image") : null;
+            // 이미지 URL (BLOB 있으면 스트리밍 엔드포인트, 없으면 레거시 문자열 폴백)
+            $art['art_image_url'] = $this->model->hasImage($art)
+                ? ("/api/arts/{$art['id']}/image")
+                : ($art['art_image'] ?? null);
+
+            // BLOB 컬럼 방어적 제거 (혹시 쿼리에 포함될 경우 대비)
+            unset($art['art_images']);
 
             $art['artist'] = $artists;
             $art['exhibitions'] = $exhibitions;
@@ -92,8 +101,8 @@ class ArtController {
             $results[] = $art;
         }
 
-        header('Content-Type: application/json');
-        echo json_encode($results, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
+        header('Content-Type: application/json; charset=utf-8');
+        echo json_encode($results, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT);
     }
 
     /**
@@ -127,13 +136,18 @@ class ArtController {
             $art['artist'] = $artists;
             $art['exhibitions'] = $exhibitions;
             $art['is_liked'] = $likesInfo['isLikedByUser'];
-            $art['art_image_url'] = $this->model->hasImage($art) ? ("/api/arts/{$art['id']}/image") : null;
 
-            header('Content-Type: application/json');
-            echo json_encode($art, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
+            // 이미지 URL 생성 (폴백 포함)
+            $art['art_image_url'] = $this->model->hasImage($art)
+                ? ("/api/arts/{$art['id']}/image")
+                : ($art['art_image'] ?? null);
+            unset($art['art_images']);
+
+            header('Content-Type: application/json; charset=utf-8');
+            echo json_encode($art, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT);
         } else {
             http_response_code(404);
-            header('Content-Type: application/json');
+            header('Content-Type: application/json; charset=utf-8');
             echo json_encode(['message' => 'Art not found']);
         }
     }
@@ -152,7 +166,7 @@ class ArtController {
         $meta = $this->model->getImageMetaById($id);
         if (!$meta || empty($meta['art_images'])) {
             http_response_code(404);
-            header('Content-Type: application/json');
+            header('Content-Type: application/json; charset=utf-8');
             echo json_encode(['message' => 'Image not found']);
             return;
         }
@@ -162,11 +176,10 @@ class ArtController {
         if (!empty($meta['art_image_size'])) {
             header('Content-Length: ' . $meta['art_image_size']);
         }
-        // 캐시 헤더(원하면 수정)
         header('Cache-Control: public, max-age=86400');
 
-        // 실제 바이너리 스트리밍
         $this->model->streamImageById($id);
+        exit; // 바이너리 전송 후 추가 출력 방지
     }
 
     /**
@@ -254,8 +267,9 @@ class ArtController {
      * )
      */
     public function createArt() {
-        // 1) multipart/form-data 업로드(우선)
         $contentType = $_SERVER['CONTENT_TYPE'] ?? '';
+
+        // 1) multipart/form-data 업로드(우선)
         if (stripos($contentType, 'multipart/form-data') !== false) {
             $payload = $_POST; // 텍스트 필드
             $createdArt = $this->model->create($payload);
@@ -267,16 +281,23 @@ class ArtController {
             }
 
             if ($createdArt) {
+                // URL/폴백 및 BLOB 방어 제거
+                $createdArt['art_image_url'] = $this->model->hasImage($createdArt)
+                    ? ("/api/arts/{$createdArt['id']}/image")
+                    : ($createdArt['art_image'] ?? null);
+                unset($createdArt['art_images']);
+
                 http_response_code(201);
-                $createdArt['art_image_url'] = $this->model->hasImage($createdArt) ? ("/api/arts/{$createdArt['id']}/image") : null;
+                header('Content-Type: application/json; charset=utf-8');
                 echo json_encode([
                     'message' => 'Art created successfully',
                     'data'    => $createdArt
-                ], JSON_UNESCAPED_UNICODE);
+                ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
                 return;
             }
 
             http_response_code(500);
+            header('Content-Type: application/json; charset=utf-8');
             echo json_encode(['message' => 'Failed to create art']);
             return;
         }
@@ -292,14 +313,20 @@ class ArtController {
         }
 
         if ($createdArt) {
+            $createdArt['art_image_url'] = $this->model->hasImage($createdArt)
+                ? ("/api/arts/{$createdArt['id']}/image")
+                : ($createdArt['art_image'] ?? null);
+            unset($createdArt['art_images']);
+
             http_response_code(201);
-            $createdArt['art_image_url'] = $this->model->hasImage($createdArt) ? ("/api/arts/{$createdArt['id']}/image") : null;
+            header('Content-Type: application/json; charset=utf-8');
             echo json_encode([
                 'message' => 'Art created successfully',
                 'data'    => $createdArt
-            ], JSON_UNESCAPED_UNICODE);
+            ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
         } else {
             http_response_code(500);
+            header('Content-Type: application/json; charset=utf-8');
             echo json_encode(['message' => 'Failed to create art']);
         }
     }
@@ -316,6 +343,7 @@ class ArtController {
      */
     public function updateArt($id) {
         $contentType = $_SERVER['CONTENT_TYPE'] ?? '';
+        $success = false;
 
         if (stripos($contentType, 'multipart/form-data') !== false) {
             $payload = $_POST;
@@ -336,14 +364,19 @@ class ArtController {
 
         if (!empty($success)) {
             $updatedArt = $this->model->getById($id);
-            $updatedArt['art_image_url'] = $this->model->hasImage($updatedArt) ? ("/api/arts/{$id}/image") : null;
+            $updatedArt['art_image_url'] = $this->model->hasImage($updatedArt)
+                ? ("/api/arts/{$id}/image")
+                : ($updatedArt['art_image'] ?? null);
+            unset($updatedArt['art_images']);
 
+            header('Content-Type: application/json; charset=utf-8');
             echo json_encode([
                 'message' => 'Art updated successfully',
                 'data'    => $updatedArt
-            ], JSON_UNESCAPED_UNICODE);
+            ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
         } else {
             http_response_code(404);
+            header('Content-Type: application/json; charset=utf-8');
             echo json_encode(['message' => 'Art not found or update failed']);
         }
     }
@@ -360,6 +393,7 @@ class ArtController {
     public function deleteArt($id) {
         $success = $this->model->delete($id);
 
+        header('Content-Type: application/json; charset=utf-8');
         if ($success) {
             echo json_encode(['message' => 'Art deleted successfully']);
         } else {
