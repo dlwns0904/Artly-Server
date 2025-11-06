@@ -171,14 +171,86 @@ class ArtController {
 
     /**
      * @OA\Post(
-     *     path="/api/arts",
-     *     summary="작품 등록",
-     *     tags={"Art"},
-     *     @OA\RequestBody(
-     *       required=true,
-     *       description="JSON 또는 multipart/form-data 지원. multipart일 경우 필드명 'art_image' 사용."
+     *   path="/api/arts",
+     *   summary="작품 등록",
+     *   tags={"Art"},
+     *   @OA\RequestBody(
+     *     required=true,
+     *     description="JSON 또는 multipart/form-data 지원. multipart일 경우 파일 필드명은 'art_image'.",
+     *     @OA\MediaType(
+     *       mediaType="multipart/form-data",
+     *       @OA\Schema(
+     *         type="object",
+     *         required={"artist_id","art_title"},
+     *         @OA\Property(property="artist_id", type="integer", example=1, description="작가 ID"),
+     *         @OA\Property(property="art_title", type="string", example="밤하늘", description="작품 제목"),
+     *         @OA\Property(property="art_description", type="string", example="별 가득한 밤 풍경"),
+     *         @OA\Property(property="art_docent", type="string", example="이 작품은..."),
+     *         @OA\Property(property="art_material", type="string", example="캔버스에 유화"),
+     *         @OA\Property(property="art_size", type="string", example="72.7 x 60.6 cm"),
+     *         @OA\Property(property="art_year", type="string", example="2024"),
+     *         @OA\Property(
+     *           property="art_image",
+     *           type="string",
+     *           format="binary",
+     *           description="업로드 이미지 파일 (jpg/png 등)"
+     *         )
+     *       )
      *     ),
-     *     @OA\Response(response=201, description="Created")
+     *     @OA\MediaType(
+     *       mediaType="application/json",
+     *       @OA\Schema(
+     *         type="object",
+     *         required={"artist_id","art_title"},
+     *         @OA\Property(property="artist_id", type="integer", example=1),
+     *         @OA\Property(property="art_title", type="string", example="밤하늘"),
+     *         @OA\Property(property="art_description", type="string", example="별 가득한 밤 풍경"),
+     *         @OA\Property(property="art_docent", type="string", example="이 작품은..."),
+     *         @OA\Property(property="art_material", type="string", example="캔버스에 유화"),
+     *         @OA\Property(property="art_size", type="string", example="72.7 x 60.6 cm"),
+     *         @OA\Property(property="art_year", type="string", example="2024"),
+     *         @OA\Property(
+     *           property="art_image_base64",
+     *           type="string",
+     *           example="data:image/png;base64,iVBORw0KGgoAAA...",
+     *           description="data URL 또는 순수 base64 문자열"
+     *         ),
+     *         @OA\Property(property="art_image_name", type="string", example="starry-night.png", description="(선택) 원본 파일명")
+     *       )
+     *     )
+     *   ),
+     *   @OA\Response(
+     *     response=201,
+     *     description="Created",
+     *     @OA\JsonContent(
+     *       type="object",
+     *       @OA\Property(property="message", type="string", example="Art created successfully"),
+     *       @OA\Property(
+     *         property="data",
+     *         type="object",
+     *         @OA\Property(property="id", type="integer", example=123),
+     *         @OA\Property(property="artist_id", type="integer", example=1),
+     *         @OA\Property(property="art_title", type="string", example="밤하늘"),
+     *         @OA\Property(property="art_description", type="string", example="별 가득한 밤 풍경"),
+     *         @OA\Property(property="art_docent", type="string", example="이 작품은..."),
+     *         @OA\Property(property="art_material", type="string", example="캔버스에 유화"),
+     *         @OA\Property(property="art_size", type="string", example="72.7 x 60.6 cm"),
+     *         @OA\Property(property="art_year", type="string", example="2024"),
+     *         @OA\Property(property="art_image", type="string", nullable=true, example=null, description="레거시/외부 URL 문자열(있는 경우)"),
+     *         @OA\Property(property="art_image_url", type="string", nullable=true, example="/api/arts/123/image", description="Blob 저장 시 접근 URL"),
+     *         @OA\Property(property="create_dtm", type="string", example="2025-11-06 13:05:21"),
+     *         @OA\Property(property="update_dtm", type="string", example="2025-11-06 13:05:21")
+     *       )
+     *     )
+     *   ),
+     *   @OA\Response(
+     *     response=500,
+     *     description="Failed to create art",
+     *     @OA\JsonContent(
+     *       type="object",
+     *       @OA\Property(property="message", type="string", example="Failed to create art")
+     *     )
+     *   )
      * )
      */
     public function createArt() {
