@@ -201,7 +201,7 @@ class ExhibitionController {
      *       mediaType="multipart/form-data",
      *       @OA\Schema(
      *         type="object",
-     *         @OA\Property(property="gallery_id", type="integer", example=123), // ✅ 추가
+     *         @OA\Property(property="gallery_id", type="integer", example=123),
      *         @OA\Property(property="exhibition_title", type="string"),
      *         @OA\Property(property="exhibition_category", type="string"),
      *         @OA\Property(property="exhibition_start_date", type="string", format="date"),
