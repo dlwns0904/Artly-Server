@@ -19,16 +19,16 @@ class GalleryModel {
     public function create($data) {
         $sql = "
             INSERT INTO APIServer_gallery (
-                gallery_name, gallery_image, gallery_address,
-                gallery_start_time, gallery_end_time, gallery_closed_day,
-                gallery_category, gallery_description,
+                gallery_name, gallery_image, gallery_image_mime, gallery_image_name, gallery_image_size,
+                gallery_address, gallery_start_time, gallery_end_time, gallery_closed_day,
+                gallery_category, gallery_description, gallery_eng_name,
                 gallery_latitude, gallery_longitude,
                 gallery_phone, gallery_email, gallery_homepage, gallery_sns,
                 user_id
             ) VALUES (
-                :name, :image, :address,
-                :start_time, :end_time, :closed_day,
-                :category, :description,
+                :name, :image, :image_mime, :image_name, :image_size,
+                :address, :start_time, :end_time, :closed_day,
+                :category, :description, :eng_name,
                 :latitude, :longitude,
                 :phone, :email, :homepage, :sns,
                 :user_id
@@ -36,23 +36,39 @@ class GalleryModel {
         ";
 
         $stmt = $this->pdo->prepare($sql);
-        $stmt->execute([
-            ':name'       => $data['gallery_name'],
-            ':image'      => $data['gallery_image'] ?? null,
-            ':address'    => $data['gallery_address'] ?? null,
-            ':start_time' => $data['gallery_start_time'] ?? null,
-            ':end_time'   => $data['gallery_end_time'] ?? null,
-            ':closed_day' => $data['gallery_closed_day'] ?? null,
-            ':category'   => $data['gallery_category'] ?? null,
-            ':description'=> $data['gallery_description'] ?? null,
-            ':latitude'   => $data['gallery_latitude'] ?? null,
-            ':longitude'  => $data['gallery_longitude'] ?? null,
-            ':phone'      => $data['gallery_phone'] ?? null,
-            ':email'      => $data['gallery_email'] ?? null,
-            ':homepage'   => $data['gallery_homepage'] ?? null,
-            ':sns' => $this->normalizeSns($data['gallery_sns'] ?? null),
-            ':user_id'    => $data['user_id'] ?? null,
-        ]);
+
+        // 공통(문자열/숫자)
+        $stmt->bindValue(':name',        $data['gallery_name']        ?? null);
+        $stmt->bindValue(':address',     $data['gallery_address']     ?? null);
+        $stmt->bindValue(':start_time',  $data['gallery_start_time']  ?? null);
+        $stmt->bindValue(':end_time',    $data['gallery_end_time']    ?? null);
+        $stmt->bindValue(':closed_day',  $data['gallery_closed_day']  ?? null);
+        $stmt->bindValue(':category',    $data['gallery_category']    ?? null);
+        $stmt->bindValue(':description', $data['gallery_description'] ?? null);
+        $stmt->bindValue(':eng_name',    $data['gallery_eng_name']    ?? null);
+        $stmt->bindValue(':latitude',    $data['gallery_latitude']    ?? null);
+        $stmt->bindValue(':longitude',   $data['gallery_longitude']   ?? null);
+        $stmt->bindValue(':phone',       $data['gallery_phone']       ?? null);
+        $stmt->bindValue(':email',       $data['gallery_email']       ?? null);
+        $stmt->bindValue(':homepage',    $data['gallery_homepage']    ?? null);
+        $stmt->bindValue(':sns',         $this->normalizeSns($data['gallery_sns'] ?? null));
+        $stmt->bindValue(':user_id',     $data['user_id']             ?? null);
+
+        // BLOB/메타: 멀티파트면 스트림 존재
+        if (!empty($data['gallery_image_stream'])) {
+            $stmt->bindValue(':image',      $data['gallery_image_stream'], \PDO::PARAM_LOB);
+            $stmt->bindValue(':image_mime', $data['gallery_image_mime'] ?? null);
+            $stmt->bindValue(':image_name', $data['gallery_image_name'] ?? null);
+            $stmt->bindValue(':image_size', (int)($data['gallery_image_size'] ?? 0), \PDO::PARAM_INT);
+        } else {
+            // (폴백) JSON 경로/문자열로 들어오던 기존 케이스 지원
+            $stmt->bindValue(':image',      null, \PDO::PARAM_NULL);
+            $stmt->bindValue(':image_mime', null, \PDO::PARAM_NULL);
+            $stmt->bindValue(':image_name', null, \PDO::PARAM_NULL);
+            $stmt->bindValue(':image_size', null, \PDO::PARAM_NULL);
+        }
+
+        $stmt->execute();
 
         $id = $this->pdo->lastInsertId();
         return $this->getById($id, $data['user_id'] ?? null);
@@ -62,56 +78,58 @@ class GalleryModel {
      * 갤러리 수정
      */
     public function update($id, $data) {
-    $fields = [
-        'gallery_name'       => ':name',
-        'gallery_image'      => ':image',
-        'gallery_address'    => ':address',
-        'gallery_start_time' => ':start_time',
-        'gallery_end_time'   => ':end_time',
-        'gallery_closed_day' => ':closed_day',
-        'gallery_category'   => ':category',
-        'gallery_description'=> ':description',
-        'gallery_latitude'   => ':latitude',
-        'gallery_longitude'  => ':longitude',
-        'gallery_phone'      => ':phone',
-        'gallery_email'      => ':email',
-        'gallery_homepage'   => ':homepage',
-        // gallery_sns는 조건부로 아래에서 추가
-    ];
+        $fields = [
+            'gallery_name'       => ':name',
+            'gallery_image'      => ':image',
+            'gallery_address'    => ':address',
+            'gallery_start_time' => ':start_time',
+            'gallery_end_time'   => ':end_time',
+            'gallery_closed_day' => ':closed_day',
+            'gallery_category'   => ':category',
+            'gallery_description'=> ':description',
+            'gallery_eng_name'   => ':eng_name',
+            'gallery_latitude'   => ':latitude',
+            'gallery_longitude'  => ':longitude',
+            'gallery_phone'      => ':phone',
+            'gallery_email'      => ':email',
+            'gallery_homepage'   => ':homepage',
+            // gallery_sns는 조건부로 아래에서 추가
+        ];
 
-    $setParts = [];
-    foreach ($fields as $col => $ph) $setParts[] = "$col = $ph";
+        $setParts = [];
+        foreach ($fields as $col => $ph) $setParts[] = "$col = $ph";
 
-    $params = [
-        ':id'         => $id,
-        ':name'       => $data['gallery_name'] ?? null,
-        ':image'      => $data['gallery_image'] ?? null,
-        ':address'    => $data['gallery_address'] ?? null,
-        ':start_time' => $data['gallery_start_time'] ?? null,
-        ':end_time'   => $data['gallery_end_time'] ?? null,
-        ':closed_day' => $data['gallery_closed_day'] ?? null,
-        ':category'   => $data['gallery_category'] ?? null,
-        ':description'=> $data['gallery_description'] ?? null,
-        ':latitude'   => $data['gallery_latitude'] ?? null,
-        ':longitude'  => $data['gallery_longitude'] ?? null,
-        ':phone'      => $data['gallery_phone'] ?? null,
-        ':email'      => $data['gallery_email'] ?? null,
-        ':homepage'   => $data['gallery_homepage'] ?? null,
-    ];
+        $params = [
+            ':id'         => $id,
+            ':name'       => $data['gallery_name'] ?? null,
+            ':image'      => $data['gallery_image'] ?? null,
+            ':address'    => $data['gallery_address'] ?? null,
+            ':start_time' => $data['gallery_start_time'] ?? null,
+            ':end_time'   => $data['gallery_end_time'] ?? null,
+            ':closed_day' => $data['gallery_closed_day'] ?? null,
+            ':category'   => $data['gallery_category'] ?? null,
+            ':description'=> $data['gallery_description'] ?? null,
+            ':eng_name'   => $data['gallery_eng_name'] ?? null,
+            ':latitude'   => $data['gallery_latitude'] ?? null,
+            ':longitude'  => $data['gallery_longitude'] ?? null,
+            ':phone'      => $data['gallery_phone'] ?? null,
+            ':email'      => $data['gallery_email'] ?? null,
+            ':homepage'   => $data['gallery_homepage'] ?? null,
+        ];
 
-    // 요청 바디에 gallery_sns 키가 있을 때만 업데이트
-    if (array_key_exists('gallery_sns', $data)) {
-        $setParts[] = "gallery_sns = :sns";
-        $params[':sns'] = $this->normalizeSns($data['gallery_sns']);
+        // 요청 바디에 gallery_sns 키가 있을 때만 업데이트
+        if (array_key_exists('gallery_sns', $data)) {
+            $setParts[] = "gallery_sns = :sns";
+            $params[':sns'] = $this->normalizeSns($data['gallery_sns']);
+        }
+
+        $sql = "UPDATE APIServer_gallery SET " . implode(', ', $setParts) . " WHERE id = :id";
+
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute($params);
+
+        return $this->getById($id, $data['user_id'] ?? null);
     }
-
-    $sql = "UPDATE APIServer_gallery SET " . implode(', ', $setParts) . " WHERE id = :id";
-
-    $stmt = $this->pdo->prepare($sql);
-    $stmt->execute($params);
-
-    return $this->getById($id, $data['user_id'] ?? null);
-}
 
     /**
      * 갤러리 삭제
@@ -134,8 +152,9 @@ class GalleryModel {
                 g.gallery_longitude,
                 g.gallery_address,
                 g.gallery_category,
-                DATE_FORMAT(g.gallery_start_time, '%H:%i') AS gallery_start_time,
-                DATE_FORMAT(g.gallery_end_time, '%H:%i') AS gallery_end_time,
+                g.gallery_eng_name,
+                LEFT(g.gallery_start_time, 5) AS gallery_start_time,
+                LEFT(g.gallery_end_time,   5) AS gallery_end_time,
                 g.gallery_phone,
                 g.gallery_email,
                 g.gallery_homepage,
@@ -221,13 +240,14 @@ class GalleryModel {
                 'gallery_longitude'  => isset($row['gallery_longitude']) ? (float)$row['gallery_longitude'] : null,
                 'gallery_address'    => $row['gallery_address'],
                 'gallery_category'   => $row['gallery_category'],
+                'gallery_eng_name'   => $row['gallery_eng_name'],
                 'gallery_start_time' => $row['gallery_start_time'],
-                'gallery_end_time' => $row['gallery_end_time'],
-                'is_liked' => (bool)$row['is_liked'],
-                'gallery_phone' => $row['gallery_phone'],
-                'gallery_email' => $row['gallery_email'],
-                'gallery_homepage' => $row['gallery_homepage'],
-                'gallery_sns' => $row['gallery_sns'],
+                'gallery_end_time'   => $row['gallery_end_time'],
+                'is_liked'           => (bool)$row['is_liked'],
+                'gallery_phone'      => $row['gallery_phone'],
+                'gallery_email'      => $row['gallery_email'],
+                'gallery_homepage'   => $row['gallery_homepage'],
+                'gallery_sns'        => $row['gallery_sns'],
                 'gallery_end_time'   => $row['gallery_end_time'],
                 'gallery_phone'      => $row['gallery_phone'],
                 'gallery_email'      => $row['gallery_email'],
@@ -245,87 +265,109 @@ class GalleryModel {
      * 갤러리 단건 조회 (+ 전시 일부 정보)
      */
     public function getById($id, $user_id = null) {
-        $sql = "
-            SELECT
-                g.id AS gallery_id,
-                g.gallery_name,
-                g.gallery_image,
-                g.gallery_address,
-                g.gallery_start_time,
-                g.gallery_end_time,
-                g.gallery_closed_day,
-                g.gallery_category,
-                g.gallery_description,
-                g.gallery_latitude,
-                g.gallery_longitude,
-                g.gallery_phone,
-                g.gallery_email,
-                g.gallery_homepage,
-                g.gallery_sns,
-                IFNULL(lc.like_count, 0) AS like_count,
-                IF(EXISTS (
-                    SELECT 1 FROM APIServer_gallery_like l
-                    WHERE l.gallery_id = g.id AND l.user_id = :user_id_for_like
-                ), 1, 0) AS is_liked,
-                e.id AS exhibition_id,
-                e.exhibition_title,
-                e.exhibition_poster,
-                e.exhibition_status
-            FROM APIServer_gallery g
-            LEFT JOIN (
-                SELECT gallery_id, COUNT(*) AS like_count
-                FROM APIServer_gallery_like
-                GROUP BY gallery_id
-            ) lc ON g.id = lc.gallery_id
-            LEFT JOIN APIServer_exhibition e
-                ON g.id = e.gallery_id AND e.exhibition_status = 'exhibited'
-            WHERE g.id = :id
-        ";
+    $sql = "
+        SELECT
+            g.id AS gallery_id,
+            g.gallery_name,
+            g.gallery_image,
+            g.gallery_address,
+            LEFT(g.gallery_start_time, 5) AS gallery_start_time,
+            LEFT(g.gallery_end_time,   5) AS gallery_end_time,
+            g.gallery_closed_day,
+            g.gallery_category,
+            g.gallery_description,
+            g.gallery_eng_name,
+            g.gallery_latitude,
+            g.gallery_longitude,
+            g.gallery_phone,
+            g.gallery_email,
+            g.gallery_homepage,
+            g.gallery_sns,
+            IFNULL(lc.like_count, 0) AS like_count,
+            IF(EXISTS (
+                SELECT 1 FROM APIServer_gallery_like l
+                WHERE l.gallery_id = g.id AND l.user_id = :user_id_for_like
+            ), 1, 0) AS is_liked,
+            e.id AS exhibition_id,
+            e.exhibition_title,
+            e.exhibition_poster,
+            e.exhibition_status
+        FROM APIServer_gallery g
+        LEFT JOIN (
+            SELECT gallery_id, COUNT(*) AS like_count
+            FROM APIServer_gallery_like
+            GROUP BY gallery_id
+        ) lc ON g.id = lc.gallery_id
+        LEFT JOIN APIServer_exhibition e
+            ON g.id = e.gallery_id AND e.exhibition_status = 'exhibited'
+        WHERE g.id = :id
+    ";
 
-        $stmt = $this->pdo->prepare($sql);
-        $stmt->execute([
-            ':id' => $id,
-            ':user_id_for_like' => $user_id ?? 0
-        ]);
+    $stmt = $this->pdo->prepare($sql);
+    $stmt->execute([
+        ':id' => $id,
+        ':user_id_for_like' => $user_id ?? 0
+    ]);
 
-        $rows = $stmt->fetchAll();
-        if (empty($rows)) return null;
+    $rows = $stmt->fetchAll();
+    if (empty($rows)) return null;
 
-        $firstRow = $rows[0];
+    $firstRow = $rows[0];
 
-        $gallery = [
-            'id'                 => (int)$firstRow['gallery_id'],
-            'gallery_name'       => $firstRow['gallery_name'],
-            'gallery_image'      => $firstRow['gallery_image'],
-            'gallery_address'    => $firstRow['gallery_address'],
-            'gallery_start_time' => $firstRow['gallery_start_time'],
-            'gallery_end_time'   => $firstRow['gallery_end_time'],
-            'gallery_closed_day' => $firstRow['gallery_closed_day'],
-            'gallery_category'   => $firstRow['gallery_category'],
-            'gallery_description'=> $firstRow['gallery_description'],
-            'gallery_latitude'   => isset($firstRow['gallery_latitude']) ? (float)$firstRow['gallery_latitude'] : null,
-            'gallery_longitude'  => isset($firstRow['gallery_longitude']) ? (float)$firstRow['gallery_longitude'] : null,
-            'gallery_phone'      => $firstRow['gallery_phone'],
-            'gallery_email'      => $firstRow['gallery_email'],
-            'gallery_homepage'   => $firstRow['gallery_homepage'],
-            'gallery_sns'        => $firstRow['gallery_sns'],
-            'like_count'         => (int)$firstRow['like_count'],
-            'is_liked'           => (bool)$firstRow['is_liked'],
-            'exhibitions'        => []
-        ];
+    $gallery = [
+        'id'                 => (int)$firstRow['gallery_id'],
+        'gallery_name'       => $firstRow['gallery_name'],
+        'gallery_image'      => $firstRow['gallery_image'],
+        'gallery_address'    => $firstRow['gallery_address'],
+        'gallery_start_time' => $firstRow['gallery_start_time'],
+        'gallery_end_time'   => $firstRow['gallery_end_time'],
+        'gallery_closed_day' => $firstRow['gallery_closed_day'],
+        'gallery_category'   => $firstRow['gallery_category'],
+        'gallery_description'=> $firstRow['gallery_description'],
+        'gallery_eng_name'   => $firstRow['gallery_eng_name'],
+        'gallery_latitude'   => isset($firstRow['gallery_latitude']) ? (float)$firstRow['gallery_latitude'] : null,
+        'gallery_longitude'  => isset($firstRow['gallery_longitude']) ? (float)$firstRow['gallery_longitude'] : null,
+        'gallery_phone'      => $firstRow['gallery_phone'],
+        'gallery_email'      => $firstRow['gallery_email'],
+        'gallery_homepage'   => $firstRow['gallery_homepage'],
+        'gallery_sns'        => $firstRow['gallery_sns'],
+        'like_count'         => (int)$firstRow['like_count'],
+        'is_liked'           => (bool)$firstRow['is_liked'],
+        'exhibitions'        => []
+    ];
 
-        foreach ($rows as $row) {
-            if (!empty($row['exhibition_id'])) {
-                $gallery['exhibitions'][] = [
-                    'id'     => (int)$row['exhibition_id'],
-                    'title'  => $row['exhibition_title'],
-                    'poster' => $row['exhibition_poster'],
-                    'status' => $row['exhibition_status']
-                ];
-            }
+    foreach ($rows as $row) {
+        if (!empty($row['exhibition_id'])) {
+            $gallery['exhibitions'][] = [
+                'id'     => (int)$row['exhibition_id'],
+                'title'  => $row['exhibition_title'],
+                'poster' => $row['exhibition_poster'],
+                'status' => $row['exhibition_status']
+            ];
         }
+    }
 
-        return $gallery;
+    // ★ 항상 image_url 포함
+    // 도메인까지 포함하려면 $_ENV['APP_BASE_URL'] 사용해서 prefix 붙이기
+    $base = rtrim($_ENV['APP_BASE_URL'] ?? '', '/');
+    $path = "/api/galleries/{$gallery['id']}/image";
+    $gallery['image_url'] = $base ? ($base . $path) : $path;
+
+    return $gallery;
+}
+
+
+    // ★ 추가: 이미지(BLOB)만 조회용
+    public function getImageById($id) {
+        $sql = "
+            SELECT gallery_image, gallery_image_mime, gallery_image_name, gallery_image_size
+            FROM APIServer_gallery
+            WHERE id = :id
+            LIMIT 1
+        ";
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute([':id' => $id]);
+        return $stmt->fetch(PDO::FETCH_ASSOC);
     }
 
     public function getGalleriesBySearch($filters = []) {
@@ -347,7 +389,6 @@ class GalleryModel {
         }
 
         // 4. WHERE 조건이 하나라도 있으면 쿼리문에 추가합니다.
-        // implode() 함수를 사용해 " AND "로 각 조건들을 연결합니다.
         if (!empty($whereClauses)) {
             $sql .= " WHERE " . implode(" AND ", $whereClauses);
         }
@@ -359,59 +400,57 @@ class GalleryModel {
     }
 
     private function normalizeSns($snsInput) {
-    if ($snsInput === null || $snsInput === '') return null;
+        if ($snsInput === null || $snsInput === '') return null;
 
-    // 문자열이면 JSON 검증
-    if (is_string($snsInput)) {
-        $trim = trim($snsInput);
-        if ($trim === '') return null;
-        // 유효한 JSON이 아니면 예외
-        if (!json_decode($trim, true) || json_last_error() !== JSON_ERROR_NONE) {
-            throw new \InvalidArgumentException('gallery_sns는 JSON 배열이어야 합니다.');
+        // 문자열이면 JSON 검증
+        if (is_string($snsInput)) {
+            $trim = trim($snsInput);
+            if ($trim === '') return null;
+            // 유효한 JSON이 아니면 예외
+            if (!json_decode($trim, true) || json_last_error() !== JSON_ERROR_NONE) {
+                throw new \InvalidArgumentException('gallery_sns는 JSON 배열이어야 합니다.');
+            }
+            $arr = json_decode($trim, true);
+        } else {
+            // 배열/객체라면 그대로 사용
+            if (!is_array($snsInput)) {
+                throw new \InvalidArgumentException('gallery_sns는 배열이어야 합니다.');
+            }
+            $arr = $snsInput;
         }
-        $arr = json_decode($trim, true);
-    } else {
-        // 배열/객체라면 그대로 사용
-        if (!is_array($snsInput)) {
-            throw new \InvalidArgumentException('gallery_sns는 배열이어야 합니다.');
+
+        // 스키마 검증: 배열, 최대 4개, 각 아이템 {platform,url}
+        if (count($arr) > 4) {
+            throw new \InvalidArgumentException('gallery_sns는 최대 4개까지입니다.');
         }
-        $arr = $snsInput;
+
+        $allowedPlatforms = [
+            'instagram','facebook','x','youtube','tiktok','naver_blog','kakao_channel','homepage','etc'
+        ];
+
+        $out = [];
+        foreach ($arr as $i => $item) {
+            if (!is_array($item)) {
+                throw new \InvalidArgumentException("gallery_sns[$i] 형식이 잘못되었습니다.");
+            }
+            $platform = isset($item['platform']) ? strtolower(trim($item['platform'])) : null;
+            $url = isset($item['url']) ? trim($item['url']) : null;
+
+            if ($platform === null || $url === null) {
+                throw new \InvalidArgumentException("gallery_sns[$i]는 platform, url이 필요합니다.");
+            }
+            // 플랫폼 화이트리스트(원하면 주석 처리 가능)
+            if (!in_array($platform, $allowedPlatforms, true)) {
+                throw new \InvalidArgumentException("허용되지 않는 platform: {$platform}");
+            }
+            // URL 대략 검증(선택)
+            if (!preg_match('#^https?://#i', $url)) {
+                throw new \InvalidArgumentException("gallery_sns[$i].url 형식이 잘못되었습니다.");
+            }
+            $out[] = ['platform'=>$platform, 'url'=>$url];
+        }
+
+        // JSON 문자열로 반환(한글 안전)
+        return json_encode($out, JSON_UNESCAPED_UNICODE);
     }
-
-    // 스키마 검증: 배열, 최대 4개, 각 아이템 {platform,url}
-    if (count($arr) > 4) {
-        throw new \InvalidArgumentException('gallery_sns는 최대 4개까지입니다.');
-    }
-
-    $allowedPlatforms = [
-        'instagram','facebook','x','youtube','tiktok','naver_blog','kakao_channel','homepage','etc'
-    ];
-
-    $out = [];
-    foreach ($arr as $i => $item) {
-        if (!is_array($item)) {
-            throw new \InvalidArgumentException("gallery_sns[$i] 형식이 잘못되었습니다.");
-        }
-        $platform = isset($item['platform']) ? strtolower(trim($item['platform'])) : null;
-        $url = isset($item['url']) ? trim($item['url']) : null;
-
-        if ($platform === null || $url === null) {
-            throw new \InvalidArgumentException("gallery_sns[$i]는 platform, url이 필요합니다.");
-        }
-        // 플랫폼 화이트리스트(원하면 주석 처리 가능)
-        if (!in_array($platform, $allowedPlatforms, true)) {
-            throw new \InvalidArgumentException("허용되지 않는 platform: {$platform}");
-        }
-        // URL 대략 검증(선택)
-        if (!preg_match('#^https?://#i', $url)) {
-            throw new \InvalidArgumentException("gallery_sns[$i].url 형식이 잘못되었습니다.");
-        }
-        $out[] = ['platform'=>$platform, 'url'=>$url];
-    }
-
-    // JSON 문자열로 반환(한글 안전)
-    return json_encode($out, JSON_UNESCAPED_UNICODE);
-    }
-
 }
-

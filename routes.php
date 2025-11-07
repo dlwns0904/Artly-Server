@@ -52,6 +52,10 @@ elseif ($requestMethod === 'DELETE' && preg_match('#^/api/artists/(\d+)$#', $req
 
 /* ───────────────────────── Exhibition ───────────────────────── */
 
+elseif ($requestMethod === 'GET' && preg_match('#^/api/exhibitions/(\d+)/image$#', $requestUri, $m)) {
+    (new ExhibitionController())->getImage($m[1]);
+}
+
 elseif ($requestMethod === 'GET' && preg_match('#^/api/exhibitions/(\d+)$#', $requestUri, $m)) {
     (new ExhibitionController())->getExhibitionById($m[1]);
 }
@@ -67,7 +71,6 @@ elseif ($requestMethod === 'PUT' && preg_match('#^/api/exhibitions/(\d+)$#', $re
 elseif ($requestMethod === 'DELETE' && preg_match('#^/api/exhibitions/(\d+)$#', $requestUri, $m)) {
     (new ExhibitionController())->deleteExhibition($m[1]);
 }
-
 elseif ($requestMethod === 'POST' && preg_match('#^/api/exhibitions/(\d+)/artists$#', $requestUri, $m)) {
     (new ExhibitionController())->registerArtists($m[1]);
 }
@@ -76,26 +79,45 @@ elseif ($requestMethod === 'POST' && preg_match('#^/api/exhibitions/(\d+)/arts$#
 }
 
 
+
 /* ───────────────────────── Art ───────────────────────── */
 
+// 목록
+if ($requestMethod === 'GET' && preg_match('#^/api/arts$#', $requestUri)) {
+    (new \Controllers\ArtController())->getArtList();
+}
+
+/* ✅ 이미지를 id보다 먼저! */
+elseif ($requestMethod === 'GET' && preg_match('#^/api/arts/(\d+)/image$#', $requestUri, $m)) {
+    (new \Controllers\ArtController())->streamArtImage((int)$m[1]);
+}
+
+// 상세
 elseif ($requestMethod === 'GET' && preg_match('#^/api/arts/(\d+)$#', $requestUri, $m)) {
-    (new ArtController())->getArtById($m[1]);
+    (new \Controllers\ArtController())->getArtById((int)$m[1]);
 }
-elseif ($requestMethod === 'GET' && preg_match('#^/api/arts$#', $requestUri)) {
-    (new ArtController())->getArtList();
+
+// 생성 (JSON 또는 multipart/form-data 모두 지원)
+elseif ($requestMethod === 'POST' && preg_match('#^/api/arts$#', $requestUri)) {
+    (new \Controllers\ArtController())->createArt();
 }
-elseif ($requestMethod === 'POST' && $requestUri === '/api/arts') {
-    (new ArtController())->createArt();
-}
+
+// 수정 (JSON 또는 multipart/form-data 모두 지원)
 elseif ($requestMethod === 'PUT' && preg_match('#^/api/arts/(\d+)$#', $requestUri, $m)) {
-    (new ArtController())->updateArt($m[1]);
+    (new \Controllers\ArtController())->updateArt((int)$m[1]);
 }
+
+// 삭제
 elseif ($requestMethod === 'DELETE' && preg_match('#^/api/arts/(\d+)$#', $requestUri, $m)) {
-    (new ArtController())->deleteArt($m[1]);
+    (new \Controllers\ArtController())->deleteArt((int)$m[1]);
 }
 
 
 /* ───────────────────────── Gallery ───────────────────────── */
+elseif ($requestMethod === 'GET' && preg_match('#^/api/galleries/(\d+)/image$#', $requestUri, $m)) {
+    (new GalleryController())->getGalleryImage($m[1]);
+}
+
 
 elseif ($requestMethod === 'GET' && preg_match('#^/api/galleries/(\d+)$#', $requestUri, $m)) {
     (new GalleryController())->getGalleryById($m[1]);
@@ -112,6 +134,7 @@ elseif ($requestMethod === 'PUT' && preg_match('#^/api/galleries/(\d+)$#', $requ
 elseif ($requestMethod === 'DELETE' && preg_match('#^/api/galleries/(\d+)$#', $requestUri, $m)) {
     (new GalleryController())->deleteGallery($m[1]);
 }
+
 
 
 /* ───────────────────────── Announcement ───────────────────────── */
