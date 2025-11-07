@@ -23,62 +23,232 @@ class GalleryController {
         $this->auth = new AuthMiddleware();
     }
 
+    /** 내부 유틸: 외부 URL 여부 */
+    private function isExternalUrl(?string $val): bool {
+        return is_string($val) && preg_match('#^https?://#i', $val);
+    }
+
+    /** 내부 유틸: 상대경로를 절대 URL로 변환 */
+    private function toAbsoluteUrl(?string $path): ?string {
+        if (!$path) return null;
+        if ($this->isExternalUrl($path)) return $path;
+
+        // /media/... 또는 media/... 모두 지원
+        $clean = ltrim($path, '/');
+        $scheme = (!empty($_SERVER['HTTP_X_FORWARDED_PROTO']))
+            ? $_SERVER['HTTP_X_FORWARDED_PROTO']
+            : (isset($_SERVER['REQUEST_SCHEME']) ? $_SERVER['REQUEST_SCHEME'] : 'http');
+        $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
+        return $scheme . '://' . $host . '/' . $clean;
+    }
+
+    /** 내부 유틸: 업로드 저장 (media/gallery/YYYY/MM) */
+    private function saveUploadedImage(array $file, string $subdir = 'gallery'): string {
+        if (!isset($file['tmp_name']) || $file['error'] !== UPLOAD_ERR_OK) {
+            throw new \RuntimeException('이미지 업로드 실패');
+        }
+
+        // MIME 확인
+        $finfo = new \finfo(FILEINFO_MIME_TYPE);
+        $mime  = $finfo->file($file['tmp_name']) ?: '';
+        $allowed = [
+            'image/jpeg' => 'jpg',
+            'image/png'  => 'png',
+            'image/webp' => 'webp',
+            'image/gif'  => 'gif',
+        ];
+        if (!isset($allowed[$mime])) {
+            throw new \InvalidArgumentException('허용되지 않는 이미지 형식입니다 (jpg/png/webp/gif)');
+        }
+
+        // 디렉토리
+        $ym   = date('Y/m');
+        $base = __DIR__ . '/../media/' . $subdir . '/' . $ym;      // 실제 서버 저장 경로
+        $rel  = 'media/' . $subdir . '/' . $ym;                    // DB 저장용 상대경로 베이스
+
+        if (!is_dir($base) && !mkdir($base, 0775, true) && !is_dir($base)) {
+            throw new \RuntimeException('이미지 디렉토리를 생성할 수 없습니다');
+        }
+
+        // 파일명
+        $ext  = $allowed[$mime];
+        $name = bin2hex(random_bytes(8)) . '.' . $ext;
+
+        $dest = $base . '/' . $name;
+        if (!move_uploaded_file($file['tmp_name'], $dest)) {
+            throw new \RuntimeException('이미지 저장 실패');
+        }
+
+        // 퍼미션(선택)
+        @chmod($dest, 0644);
+
+        // DB에는 상대경로로 저장 (예: media/gallery/2025/11/abc1234.png)
+        return $rel . '/' . $name;
+    }
+
     /**
      * @OA\Post(
      *     path="/api/galleries",
-     *     summary="갤러리 생성",
+     *     summary="갤러리 생성 (multipart 또는 JSON)",
      *     tags={"Gallery"},
      *     @OA\RequestBody(
      *         required=true,
-     *         @OA\JsonContent(
+     *         @OA\MediaType(
+     *           mediaType="multipart/form-data",
+     *           @OA\Schema(
+     *             type="object",
      *             @OA\Property(property="gallery_name", type="string"),
-     *             @OA\Property(property="gallery_image", type="string"),
      *             @OA\Property(property="gallery_address", type="string"),
-     *             @OA\Property(property="gallery_start_time", type="string"),
-     *             @OA\Property(property="gallery_end_time", type="string"),
+     *             @OA\Property(property="gallery_start_time", type="string", example="10:00"),
+     *             @OA\Property(property="gallery_end_time", type="string", example="19:00"),
      *             @OA\Property(property="gallery_closed_day", type="string"),
-     *             @OA\Property(property="gallery_category", type="string"),
+     *             @OA\Property(property="gallery_category", type="string", example="미술관"),
      *             @OA\Property(property="gallery_description", type="string"),
      *             @OA\Property(property="gallery_latitude", type="number", format="float"),
-     *             @OA\Property(property="gallery_longitude", type="number", format="float")
+     *             @OA\Property(property="gallery_longitude", type="number", format="float"),
+     *             @OA\Property(property="gallery_phone", type="string"),
+     *             @OA\Property(property="gallery_email", type="string"),
+     *             @OA\Property(property="gallery_homepage", type="string"),
+     *             @OA\Property(property="gallery_sns", type="string", description="JSON 배열 문자열"),
+     *             @OA\Property(property="gallery_image_file", type="string", format="binary"),
+     *             @OA\Property(property="gallery_image_url", type="string", description="이미지 URL을 그대로 저장하고 싶을 때")
+     *           )
      *         )
      *     ),
      *     @OA\Response(response=201, description="갤러리 생성 완료")
      * )
      */
     public function createGallery() {
-        $data = json_decode(file_get_contents("php://input"), true);
+        $decoded = $this->auth->decodeToken();
+        $userId  = $decoded && isset($decoded->user_id) ? $decoded->user_id : null;
+
+        // 1) multipart라면 $_POST/$_FILES, 2) 아니면 JSON으로 처리
+        $isMultipart = isset($_SERVER['CONTENT_TYPE']) && stripos($_SERVER['CONTENT_TYPE'], 'multipart/form-data') !== false;
+
+        if ($isMultipart) {
+            $data = [
+                'gallery_name'       => $_POST['gallery_name']       ?? null,
+                'gallery_address'    => $_POST['gallery_address']    ?? null,
+                'gallery_start_time' => $_POST['gallery_start_time'] ?? null,
+                'gallery_end_time'   => $_POST['gallery_end_time']   ?? null,
+                'gallery_closed_day' => $_POST['gallery_closed_day'] ?? null,
+                'gallery_category'   => $_POST['gallery_category']   ?? null,
+                'gallery_description'=> $_POST['gallery_description']?? null,
+                'gallery_latitude'   => $_POST['gallery_latitude']   ?? null,
+                'gallery_longitude'  => $_POST['gallery_longitude']  ?? null,
+                'gallery_phone'      => $_POST['gallery_phone']      ?? null,
+                'gallery_email'      => $_POST['gallery_email']      ?? null,
+                'gallery_homepage'   => $_POST['gallery_homepage']   ?? null,
+                'gallery_sns'        => $_POST['gallery_sns']        ?? null,
+                'user_id'            => $userId,
+            ];
+
+            // 파일 우선
+            if (!empty($_FILES['gallery_image_file']) && $_FILES['gallery_image_file']['error'] === UPLOAD_ERR_OK) {
+                $relPath = $this->saveUploadedImage($_FILES['gallery_image_file'], 'gallery');
+                $data['gallery_image'] = $relPath;   // DB에는 상대경로 저장
+            } else {
+                // 파일이 없고, URL이 왔다면 그대로 저장
+                $url = $_POST['gallery_image_url'] ?? null;
+                $data['gallery_image'] = $url ?: null;
+            }
+        } else {
+            // JSON
+            $data = json_decode(file_get_contents("php://input"), true) ?? [];
+            $data['user_id'] = $userId;
+        }
+
         $created = $this->model->create($data);
+
+        // 응답 시 이미지 절대 URL 변환
+        if (is_array($created) && isset($created['gallery_image'])) {
+            $created['gallery_image'] = $this->toAbsoluteUrl($created['gallery_image']);
+        }
+
         http_response_code(201);
+        header('Content-Type: application/json');
         echo json_encode($created, JSON_UNESCAPED_UNICODE);
     }
 
     /**
      * @OA\Put(
      *     path="/api/galleries/{id}",
-     *     summary="갤러리 수정",
+     *     summary="갤러리 수정 (multipart 또는 JSON)",
      *     tags={"Gallery"},
      *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
      *     @OA\RequestBody(
      *         required=true,
-     *         @OA\JsonContent(
+     *         @OA\MediaType(
+     *           mediaType="multipart/form-data",
+     *           @OA\Schema(
+     *             type="object",
      *             @OA\Property(property="gallery_name", type="string"),
-     *             @OA\Property(property="gallery_image", type="string"),
      *             @OA\Property(property="gallery_address", type="string"),
-     *             @OA\Property(property="gallery_start_time", type="string"),
-     *             @OA\Property(property="gallery_end_time", type="string"),
+     *             @OA\Property(property="gallery_start_time", type="string", example="10:00"),
+     *             @OA\Property(property="gallery_end_time", type="string", example="19:00"),
      *             @OA\Property(property="gallery_closed_day", type="string"),
      *             @OA\Property(property="gallery_category", type="string"),
-     *             @OA\Property(property="gallery_description", type="string")
+     *             @OA\Property(property="gallery_description", type="string"),
+     *             @OA\Property(property="gallery_latitude", type="number", format="float"),
+     *             @OA\Property(property="gallery_longitude", type="number", format="float"),
+     *             @OA\Property(property="gallery_phone", type="string"),
+     *             @OA\Property(property="gallery_email", type="string"),
+     *             @OA\Property(property="gallery_homepage", type="string"),
+     *             @OA\Property(property="gallery_sns", type="string", description="JSON 배열 문자열"),
+     *             @OA\Property(property="gallery_image_file", type="string", format="binary"),
+     *             @OA\Property(property="gallery_image_url", type="string", description="이미지 URL을 그대로 저장하고 싶을 때")
+     *           )
      *         )
      *     ),
      *     @OA\Response(response=200, description="갤러리 수정 완료")
      * )
      */
     public function updateGallery($id) {
-        $data = json_decode(file_get_contents("php://input"), true);
+        $decoded = $this->auth->decodeToken();
+        $userId  = $decoded && isset($decoded->user_id) ? $decoded->user_id : null;
+
+        $isMultipart = isset($_SERVER['CONTENT_TYPE']) && stripos($_SERVER['CONTENT_TYPE'], 'multipart/form-data') !== false;
+
+        if ($isMultipart) {
+            $data = [
+                'gallery_name'       => $_POST['gallery_name']       ?? null,
+                'gallery_address'    => $_POST['gallery_address']    ?? null,
+                'gallery_start_time' => $_POST['gallery_start_time'] ?? null,
+                'gallery_end_time'   => $_POST['gallery_end_time']   ?? null,
+                'gallery_closed_day' => $_POST['gallery_closed_day'] ?? null,
+                'gallery_category'   => $_POST['gallery_category']   ?? null,
+                'gallery_description'=> $_POST['gallery_description']?? null,
+                'gallery_latitude'   => $_POST['gallery_latitude']   ?? null,
+                'gallery_longitude'  => $_POST['gallery_longitude']  ?? null,
+                'gallery_phone'      => $_POST['gallery_phone']      ?? null,
+                'gallery_email'      => $_POST['gallery_email']      ?? null,
+                'gallery_homepage'   => $_POST['gallery_homepage']   ?? null,
+                'gallery_sns'        => $_POST['gallery_sns']        ?? null,
+                'user_id'            => $userId,
+            ];
+
+            // 새 파일 업로드가 있으면 교체
+            if (!empty($_FILES['gallery_image_file']) && $_FILES['gallery_image_file']['error'] === UPLOAD_ERR_OK) {
+                $relPath = $this->saveUploadedImage($_FILES['gallery_image_file'], 'gallery');
+                $data['gallery_image'] = $relPath;
+            } elseif (isset($_POST['gallery_image_url'])) {
+                // URL로 교체 요청이 있으면 반영
+                $data['gallery_image'] = $_POST['gallery_image_url'] ?: null;
+            }
+        } else {
+            $data = json_decode(file_get_contents("php://input"), true) ?? [];
+            $data['user_id'] = $userId;
+        }
+
         $updated = $this->model->update($id, $data);
+
+        // 응답 시 절대 URL 변환
+        if (is_array($updated) && isset($updated['gallery_image'])) {
+            $updated['gallery_image'] = $this->toAbsoluteUrl($updated['gallery_image']);
+        }
+
         http_response_code(200);
+        header('Content-Type: application/json');
         echo json_encode($updated, JSON_UNESCAPED_UNICODE);
     }
 
@@ -94,6 +264,7 @@ class GalleryController {
     public function deleteGallery($id) {
         $this->model->delete($id);
         http_response_code(200);
+        header('Content-Type: application/json');
         echo json_encode(['message' => 'Gallery deleted'], JSON_UNESCAPED_UNICODE);
     }
 
@@ -103,18 +274,17 @@ class GalleryController {
      *     summary="갤러리 목록 조회",
      *     tags={"Gallery"},
      *     security={{"bearerAuth":{}}},
-     *     @OA\Parameter(name="status", in="query", @OA\Schema(type="string")),
-     *     @OA\Parameter(name="regions", in="query", description="서울/경기,인천/부산,울산,경남(여러개이면 콤마로 구분)", @OA\Schema(type="string")),
+     *     @OA\Parameter(name="regions", in="query", description="여러개이면 콤마로 구분", @OA\Schema(type="string")),
      *     @OA\Parameter(name="type", in="query", description="미술관/박물관/갤러리/복합문화공간/대안공간", @OA\Schema(type="string")),
      *     @OA\Parameter(name="latitude", in="query", @OA\Schema(type="number", format="float")),
      *     @OA\Parameter(name="longitude", in="query", @OA\Schema(type="number", format="float")),
      *     @OA\Parameter(name="distance", in="query", @OA\Schema(type="integer")),
-     *     @OA\Parameter(name="search", in="query", description="gallery_name 기반 검색 시 사용", @OA\Schema(type="string")),
-     *     @OA\Parameter(name="liked_only", in="query",description="내가 좋아요한 갤러리만 보기 (true/false)",required=false,@OA\Schema(type="boolean")),
+     *     @OA\Parameter(name="search", in="query", description="gallery_name 검색", @OA\Schema(type="string")),
+     *     @OA\Parameter(name="liked_only", in="query", description="내가 좋아요한 갤러리만 (true/false)", @OA\Schema(type="boolean")),
      *     @OA\Response(response=200, description="조회 성공")
      * )
      */
-     public function getGalleryList() {
+    public function getGalleryList() {
         $decoded = $this->auth->decodeToken();
         $user_id = $decoded && isset($decoded->user_id) ? $decoded->user_id : null;
         $likedOnly = $_GET['liked_only'] ?? null;
@@ -125,8 +295,7 @@ class GalleryController {
             echo json_encode(['message' => '로그인 후 사용 가능합니다.']);
             return;
         }
-        
-        // 콘솔 API 통합하며 검색을 위한 gallery_name파라미터가 search로 변경 및 통일됨
+
         $filters = [
             'regions'   => $_GET['regions'] ?? null,
             'type'      => $_GET['type'] ?? null,
@@ -138,33 +307,36 @@ class GalleryController {
             'user_id'   => $user_id
         ];
 
-        // gallery 정보 불러옴
         $galleries = $this->model->getGalleries($filters);
-
-        // 조회된 gallery가 없으면 빈 배열 반환함
         if (empty($galleries)) {
             header('Content-Type: application/json');
             echo json_encode([], JSON_UNESCAPED_UNICODE);
             return;
         }
 
-        // $galleries 배열을 순회하며 각 $gallery에 전시회 정보 추가
+        // 이미지 경로 절대 URL로 변환
+        foreach ($galleries as &$g) {
+            if (isset($g['gallery_image'])) {
+                $g['gallery_image'] = $this->toAbsoluteUrl($g['gallery_image']);
+            }
+        }
+        unset($g);
+
+        // 전시 연결
         foreach ($galleries as &$gallery) {
-            // $gallery의 id조회
-            $galleryId = is_object($gallery) ? $gallery->id : $gallery['id'];
-            
-            // 전시회 관련 정보 및 전시회 총 개수 계산
+            $galleryId = is_array($gallery) ? $gallery['id'] : (is_object($gallery) ? $gallery->id : null);
+            if (!$galleryId) continue;
+
             $exhibitionFilters = ['gallery_id' => $galleryId];
             $exhibitions = $this->exhibitionModel->getExhibitions($exhibitionFilters);
             $exhibitionCount = count($exhibitions);
 
-            // $gallery에 전시회 관련 정보 추가
-            if (is_object($gallery)) {
-                $gallery->exhibitions = $exhibitions;
-                $gallery->exhibition_count = $exhibitionCount;
-            } else {
+            if (is_array($gallery)) {
                 $gallery['exhibitions'] = $exhibitions;
                 $gallery['exhibition_count'] = $exhibitionCount;
+            } else {
+                $gallery->exhibitions = $exhibitions;
+                $gallery->exhibition_count = $exhibitionCount;
             }
         }
         unset($gallery);
@@ -173,7 +345,7 @@ class GalleryController {
         echo json_encode($galleries, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
     }
 
-      /**
+    /**
      * @OA\Get(
      *     path="/api/galleries/{id}",
      *     summary="갤러리 상세 조회",
@@ -189,29 +361,19 @@ class GalleryController {
         $user_id = $decoded && isset($decoded->user_id) ? $decoded->user_id : null;
 
         $gallery = $this->model->getById($id, $user_id);
-        
-        // $gallery에 전시회 관련 정보 추가
-        if ($gallery) {
-            $filters = ['gallery_id' => $id];
-            $exhibitions = $this->exhibitionModel->getExhibitions($filters);
-            $exhibitionCount = count($exhibitions);
-
-            if (is_object($gallery)) {
-                $gallery->exhibitions = $exhibitions;
-                $gallery->exhibition_count = $exhibitionCount;
-            } else {
-                $gallery['exhibitions'] = $exhibitions;
-                $gallery['exhibition_count'] = $exhibitionCount;
-            }
-
-            header('Content-Type: application/json');
-            echo json_encode($gallery, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
-        } else {
+        if (!$gallery) {
             http_response_code(404);
             echo json_encode(['message' => 'Gallery not found']);
+            return;
         }
+
+        // 이미지 절대 URL 변환
+        if (isset($gallery['gallery_image'])) {
+            $gallery['gallery_image'] = $this->toAbsoluteUrl($gallery['gallery_image']);
+        }
+
+        // 전시 정보는 model->getById에서 일부 포함하지만, 필요 시 추가 로딩도 가능
+        header('Content-Type: application/json');
+        echo json_encode($gallery, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
     }
-
-
 }
-
