@@ -289,14 +289,20 @@ public function getGalleryById($id) {
         return;
     }
 
-    // BLOB 제거 (모델에서 image_url은 이미 포함되어 있음)
+    // 🔧 최종 보정: 모델에서 못 넣어줬더라도 여기서 보장
     if (is_array($gallery)) {
-        unset($gallery['gallery_image']);
+        if (!isset($gallery['image_url'])) {
+            $gallery['image_url'] = "/api/galleries/{$id}/image";
+        }
+        unset($gallery['gallery_image']); // BLOB 제거
     } elseif (is_object($gallery)) {
-        unset($gallery->gallery_image);
+        if (!isset($gallery->image_url)) {
+            $gallery->image_url = "/api/galleries/{$id}/image";
+        }
+        unset($gallery->gallery_image); // BLOB 제거
     }
 
-    // 전시회 정보 보강 (필요 시 재조회)
+    // 전시 추가 …
     $filters = ['gallery_id' => $id];
     $exhibitions = $this->exhibitionModel->getExhibitions($filters);
     $exhibitionCount = count($exhibitions);
@@ -304,7 +310,7 @@ public function getGalleryById($id) {
     if (is_array($gallery)) {
         $gallery['exhibitions'] = $exhibitions;
         $gallery['exhibition_count'] = $exhibitionCount;
-    } else { // object 대응 (현재는 배열 반환이지만 방어)
+    } else {
         $gallery->exhibitions = $exhibitions;
         $gallery->exhibition_count = $exhibitionCount;
     }
@@ -312,6 +318,7 @@ public function getGalleryById($id) {
     header('Content-Type: application/json; charset=utf-8');
     echo json_encode($gallery, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
 }
+
 
 
     /**
