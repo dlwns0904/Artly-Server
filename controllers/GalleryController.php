@@ -357,23 +357,37 @@ class GalleryController {
      * )
      */
     public function getGalleryById($id) {
-        $decoded = $this->auth->decodeToken();
-        $user_id = $decoded && isset($decoded->user_id) ? $decoded->user_id : null;
+    $decoded = $this->auth->decodeToken();
+    $user_id = $decoded && isset($decoded->user_id) ? $decoded->user_id : null;
 
-        $gallery = $this->model->getById($id, $user_id);
-        if (!$gallery) {
-            http_response_code(404);
-            echo json_encode(['message' => 'Gallery not found']);
-            return;
-        }
+    $gallery = $this->model->getById($id, $user_id);
+    if (!$gallery) {
+        http_response_code(404);
+        echo json_encode(['message' => 'Gallery not found']);
+        return;
+    }
 
-        // 이미지 절대 URL 변환
+    // 
+    $filters = ['gallery_id' => $id];
+    $exhibitions = $this->exhibitionModel->getExhibitions($filters);
+    $exhibitionCount = count($exhibitions);
+
+    // 배열/객체 양쪽 대응 + 이미지 절대 URL 변환 추가
+    if (is_array($gallery)) {
+        $gallery['exhibitions'] = $exhibitions;
+        $gallery['exhibition_count'] = $exhibitionCount;
         if (isset($gallery['gallery_image'])) {
             $gallery['gallery_image'] = $this->toAbsoluteUrl($gallery['gallery_image']);
         }
-
-        // 전시 정보는 model->getById에서 일부 포함하지만, 필요 시 추가 로딩도 가능
-        header('Content-Type: application/json');
-        echo json_encode($gallery, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
+    } else {
+        $gallery->exhibitions = $exhibitions;
+        $gallery->exhibition_count = $exhibitionCount;
+        if (isset($gallery->gallery_image)) {
+            $gallery->gallery_image = $this->toAbsoluteUrl($gallery->gallery_image);
+        }
     }
+
+    header('Content-Type: application/json');
+    echo json_encode($gallery, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
+}
 }
