@@ -147,7 +147,7 @@ class ArtController {
             $likesInfo = $this->likeModel->getLikesWithStatusAndCount('art', $art['id'], $userId);
 
             // 이미지 URL 변환(상대경로 → 절대 URL)
-            $art['art_image_url'] = $this->buildMediaUrl($art['art_image'] ?? null);
+            $art['art_image'] = $this->buildMediaUrl($art['art_image'] ?? null);
             $art['artist']        = $artists;
             $art['exhibitions']   = $exhibitions;
             $art['is_liked']      = $likesInfo['isLikedByUser'];
@@ -195,7 +195,7 @@ class ArtController {
         $art['artist']        = $artists;
         $art['exhibitions']   = $exhibitions;
         $art['is_liked']      = $likesInfo['isLikedByUser'];
-        $art['art_image_url'] = $this->buildMediaUrl($art['art_image'] ?? null);
+        $art['art_image'] = $this->buildMediaUrl($art['art_image'] ?? null);
 
         header('Content-Type: application/json');
         echo json_encode($art, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
@@ -246,7 +246,7 @@ class ArtController {
             $createdArt = $this->model->create($data);
             if ($createdArt) {
                 // 응답용 절대 URL 포함
-                $createdArt['art_image_url'] = $this->buildMediaUrl($createdArt['art_image'] ?? null);
+                $createdArt['art_image'] = $this->buildMediaUrl($createdArt['art_image'] ?? null);
 
                 http_response_code(201);
                 header('Content-Type: application/json');
@@ -318,7 +318,7 @@ class ArtController {
             $success = $this->model->update($id, $data);
             if ($success) {
                 $updatedArt = $this->model->getById($id);
-                $updatedArt['art_image_url'] = $this->buildMediaUrl($updatedArt['art_image'] ?? null);
+                $updatedArt['art_image'] = $this->buildMediaUrl($updatedArt['art_image'] ?? null);
                 header('Content-Type: application/json');
                 echo json_encode([
                     'message' => 'Art updated successfully',
