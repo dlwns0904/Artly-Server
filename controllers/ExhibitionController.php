@@ -535,7 +535,10 @@ class ExhibitionController {
         $row = $this->model->getImageRow((int)$id);
         if (!$row || $row['exhibition_image'] === null) {
             http_response_code(404);
-            echo 'not found'; return;
+            
+            header('Content-Type: application/json');
+            echo json_encode(['message' => 'Image not found']); 
+            return;
         }
 
         $mime = $row['exhibition_image_mime'] ?: 'application/octet-stream';
