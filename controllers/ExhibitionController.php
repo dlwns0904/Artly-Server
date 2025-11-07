@@ -400,10 +400,40 @@ class ExhibitionController {
 
     /**
      * @OA\Post(
-     *     path="/api/exhibitions/{id}/arts",
-     *     summary="전시회 작품 등록",
-     *     tags={"Exhibition"},
-     *     security={{"bearerAuth":{}}}
+     *   path="/api/exhibitions/{id}/arts",
+     *   summary="전시회 작품 등록",
+     *   tags={"Exhibition"},
+     *   security={{"bearerAuth":{}}},
+     *   @OA\Parameter(
+     *     name="id", in="path", required=true, description="전시회 ID",
+     *     @OA\Schema(type="integer")
+     *   ),
+     *   @OA\RequestBody(
+     *     required=true,
+     *     @OA\JsonContent(
+     *       required={"art_id","display_order"},
+     *       @OA\Property(property="art_id", type="integer"),
+     *       @OA\Property(property="display_order", type="integer")
+     *     )
+     *   ),
+     *   @OA\Response(
+     *     response=201,
+     *     description="등록 성공",
+     *     @OA\JsonContent(
+     *       @OA\Property(property="message", type="string", example="Artworks registered successfully"),
+     *       @OA\Property(property="data", type="object",
+     *         @OA\Property(property="id", type="integer"),
+     *         @OA\Property(property="exhibition_id", type="integer"),
+     *         @OA\Property(property="art_id", type="integer"),
+     *         @OA\Property(property="display_order", type="integer"),
+     *         @OA\Property(property="create_dtm", type="string", format="date-time"),
+     *         @OA\Property(property="update_dtm", type="string", format="date-time")
+     *       )
+     *     )
+     *   ),
+     *   @OA\Response(response=401, description="Unauthorized"),
+     *   @OA\Response(response=403, description="권한이 없습니다."),
+     *   @OA\Response(response=500, description="등록 실패")
      * )
      */
     public function registerArts($id) {
@@ -431,12 +461,42 @@ class ExhibitionController {
         }
     }
 
-    /**
+        /**
      * @OA\Post(
-     *     path="/api/exhibitions/{id}/artworks",
-     *     summary="전시회 작가 등록",
-     *     tags={"Exhibition"},
-     *     security={{"bearerAuth":{}}}
+     *   path="/api/exhibitions/{id}/artworks",
+     *   summary="전시회 작가 등록",
+     *   tags={"Exhibition"},
+     *   security={{"bearerAuth":{}}},
+     *   @OA\Parameter(
+     *     name="id", in="path", required=true, description="전시회 ID",
+     *     @OA\Schema(type="integer")
+     *   ),
+     *   @OA\RequestBody(
+     *     required=true,
+     *     @OA\JsonContent(
+     *       required={"artist_id","role"},
+     *       @OA\Property(property="artist_id", type="integer"),
+     *       @OA\Property(property="role", type="string")
+     *     )
+     *   ),
+     *   @OA\Response(
+     *     response=201,
+     *     description="등록 성공",
+     *     @OA\JsonContent(
+     *       @OA\Property(property="message", type="string", example="Artist registered successfully"),
+     *       @OA\Property(property="data", type="object",
+     *         @OA\Property(property="id", type="integer"),
+     *         @OA\Property(property="exhibition_id", type="integer"),
+     *         @OA\Property(property="artist_id", type="integer"),
+     *         @OA\Property(property="role", type="string"),
+     *         @OA\Property(property="create_dtm", type="string", format="date-time"),
+     *         @OA\Property(property="update_dtm", type="string", format="date-time")
+     *       )
+     *     )
+     *   ),
+     *   @OA\Response(response=401, description="Unauthorized"),
+     *   @OA\Response(response=403, description="권한이 없습니다."),
+     *   @OA\Response(response=500, description="등록 실패")
      * )
      */
     public function registerArtists($id) {
