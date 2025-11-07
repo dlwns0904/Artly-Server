@@ -267,53 +267,52 @@ class GalleryController {
         echo json_encode($galleries, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
     }
 
-      /**
-     * @OA\Get(
-     *     path="/api/galleries/{id}",
-     *     summary="갤러리 상세 조회",
-     *     tags={"Gallery"},
-     *     security={{"bearerAuth":{}}},
-     *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
-     *     @OA\Response(response=200, description="상세 조회 성공"),
-     *     @OA\Response(response=404, description="갤러리 없음")
-     * )
-     */
-    public function getGalleryById($id) {
-        $decoded = $this->auth->decodeToken();
-        $user_id = $decoded && isset($decoded->user_id) ? $decoded->user_id : null;
+     /**
+ * @OA\Get(
+ *     path="/api/galleries/{id}",
+ *     summary="갤러리 상세 조회",
+ *     tags={"Gallery"},
+ *     security={{"bearerAuth":{}}},
+ *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+ *     @OA\Response(response=200, description="상세 조회 성공"),
+ *     @OA\Response(response=404, description="갤러리 없음")
+ * )
+ */
+public function getGalleryById($id) {
+    $decoded = $this->auth->decodeToken();
+    $user_id = $decoded && isset($decoded->user_id) ? $decoded->user_id : null;
 
-        $gallery = $this->model->getById($id, $user_id);
-        
-        // $gallery에 전시회 관련 정보 추가
-        if ($gallery) {
-            // ★ 추가: JSON 응답에서 BLOB 제거 + image_url 부여
-            if (is_object($gallery)) {                                        // ★ 추가
-                if (isset($gallery->gallery_image)) unset($gallery->gallery_image); // ★ 추가
-                $gallery->image_url = $this->buildImageUrl($id);              // ★ 추가
-            } else {                                                           // ★ 추가
-                if (isset($gallery['gallery_image'])) unset($gallery['gallery_image']); // ★ 추가
-                $gallery['image_url'] = $this->buildImageUrl($id);            // ★ 추가
-            }                                                                   // ★ 추가
-
-            $filters = ['gallery_id' => $id];
-            $exhibitions = $this->exhibitionModel->getExhibitions($filters);
-            $exhibitionCount = count($exhibitions);
-
-            if (is_object($gallery)) {
-                $gallery->exhibitions = $exhibitions;
-                $gallery->exhibition_count = $exhibitionCount;
-            } else {
-                $gallery['exhibitions'] = $exhibitions;
-                $gallery['exhibition_count'] = $exhibitionCount;
-            }
-
-            header('Content-Type: application/json');
-            echo json_encode($gallery, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
-        } else {
-            http_response_code(404);
-            echo json_encode(['message' => 'Gallery not found']);
-        }
+    $gallery = $this->model->getById($id, $user_id);
+    if (!$gallery) {
+        http_response_code(404);
+        echo json_encode(['message' => 'Gallery not found'], JSON_UNESCAPED_UNICODE);
+        return;
     }
+
+    // BLOB 제거 (모델에서 image_url은 이미 포함되어 있음)
+    if (is_array($gallery)) {
+        unset($gallery['gallery_image']);
+    } elseif (is_object($gallery)) {
+        unset($gallery->gallery_image);
+    }
+
+    // 전시회 정보 보강 (필요 시 재조회)
+    $filters = ['gallery_id' => $id];
+    $exhibitions = $this->exhibitionModel->getExhibitions($filters);
+    $exhibitionCount = count($exhibitions);
+
+    if (is_array($gallery)) {
+        $gallery['exhibitions'] = $exhibitions;
+        $gallery['exhibition_count'] = $exhibitionCount;
+    } else { // object 대응 (현재는 배열 반환이지만 방어)
+        $gallery->exhibitions = $exhibitions;
+        $gallery->exhibition_count = $exhibitionCount;
+    }
+
+    header('Content-Type: application/json; charset=utf-8');
+    echo json_encode($gallery, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
+}
+
 
     /**
      * @OA\Get(

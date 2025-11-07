@@ -265,90 +265,97 @@ class GalleryModel {
      * 갤러리 단건 조회 (+ 전시 일부 정보)
      */
     public function getById($id, $user_id = null) {
-        $sql = "
-            SELECT
-                g.id AS gallery_id,
-                g.gallery_name,
-                g.gallery_image,
-                g.gallery_address,
-                LEFT(g.gallery_start_time, 5) AS gallery_start_time,
-                LEFT(g.gallery_end_time,   5) AS gallery_end_time,
-                g.gallery_closed_day,
-                g.gallery_category,
-                g.gallery_description,
-                g.gallery_eng_name,
-                g.gallery_latitude,
-                g.gallery_longitude,
-                g.gallery_phone,
-                g.gallery_email,
-                g.gallery_homepage,
-                g.gallery_sns,
-                IFNULL(lc.like_count, 0) AS like_count,
-                IF(EXISTS (
-                    SELECT 1 FROM APIServer_gallery_like l
-                    WHERE l.gallery_id = g.id AND l.user_id = :user_id_for_like
-                ), 1, 0) AS is_liked,
-                e.id AS exhibition_id,
-                e.exhibition_title,
-                e.exhibition_poster,
-                e.exhibition_status
-            FROM APIServer_gallery g
-            LEFT JOIN (
-                SELECT gallery_id, COUNT(*) AS like_count
-                FROM APIServer_gallery_like
-                GROUP BY gallery_id
-            ) lc ON g.id = lc.gallery_id
-            LEFT JOIN APIServer_exhibition e
-                ON g.id = e.gallery_id AND e.exhibition_status = 'exhibited'
-            WHERE g.id = :id
-        ";
+    $sql = "
+        SELECT
+            g.id AS gallery_id,
+            g.gallery_name,
+            g.gallery_image,
+            g.gallery_address,
+            LEFT(g.gallery_start_time, 5) AS gallery_start_time,
+            LEFT(g.gallery_end_time,   5) AS gallery_end_time,
+            g.gallery_closed_day,
+            g.gallery_category,
+            g.gallery_description,
+            g.gallery_eng_name,
+            g.gallery_latitude,
+            g.gallery_longitude,
+            g.gallery_phone,
+            g.gallery_email,
+            g.gallery_homepage,
+            g.gallery_sns,
+            IFNULL(lc.like_count, 0) AS like_count,
+            IF(EXISTS (
+                SELECT 1 FROM APIServer_gallery_like l
+                WHERE l.gallery_id = g.id AND l.user_id = :user_id_for_like
+            ), 1, 0) AS is_liked,
+            e.id AS exhibition_id,
+            e.exhibition_title,
+            e.exhibition_poster,
+            e.exhibition_status
+        FROM APIServer_gallery g
+        LEFT JOIN (
+            SELECT gallery_id, COUNT(*) AS like_count
+            FROM APIServer_gallery_like
+            GROUP BY gallery_id
+        ) lc ON g.id = lc.gallery_id
+        LEFT JOIN APIServer_exhibition e
+            ON g.id = e.gallery_id AND e.exhibition_status = 'exhibited'
+        WHERE g.id = :id
+    ";
 
-        $stmt = $this->pdo->prepare($sql);
-        $stmt->execute([
-            ':id' => $id,
-            ':user_id_for_like' => $user_id ?? 0
-        ]);
+    $stmt = $this->pdo->prepare($sql);
+    $stmt->execute([
+        ':id' => $id,
+        ':user_id_for_like' => $user_id ?? 0
+    ]);
 
-        $rows = $stmt->fetchAll();
-        if (empty($rows)) return null;
+    $rows = $stmt->fetchAll();
+    if (empty($rows)) return null;
 
-        $firstRow = $rows[0];
+    $firstRow = $rows[0];
 
-        $gallery = [
-            'id'                 => (int)$firstRow['gallery_id'],
-            'gallery_name'       => $firstRow['gallery_name'],
-            'gallery_image'      => $firstRow['gallery_image'],
-            'gallery_address'    => $firstRow['gallery_address'],
-            'gallery_start_time' => $firstRow['gallery_start_time'],
-            'gallery_end_time'   => $firstRow['gallery_end_time'],
-            'gallery_closed_day' => $firstRow['gallery_closed_day'],
-            'gallery_category'   => $firstRow['gallery_category'],
-            'gallery_description'=> $firstRow['gallery_description'],
-            'gallery_eng_name'   => $firstRow['gallery_eng_name'],
-            'gallery_latitude'   => isset($firstRow['gallery_latitude']) ? (float)$firstRow['gallery_latitude'] : null,
-            'gallery_longitude'  => isset($firstRow['gallery_longitude']) ? (float)$firstRow['gallery_longitude'] : null,
-            'gallery_phone'      => $firstRow['gallery_phone'],
-            'gallery_email'      => $firstRow['gallery_email'],
-            'gallery_homepage'   => $firstRow['gallery_homepage'],
-            'gallery_sns'        => $firstRow['gallery_sns'],
-            'like_count'         => (int)$firstRow['like_count'],
-            'is_liked'           => (bool)$firstRow['is_liked'],
-            'exhibitions'        => []
-        ];
+    $gallery = [
+        'id'                 => (int)$firstRow['gallery_id'],
+        'gallery_name'       => $firstRow['gallery_name'],
+        'gallery_image'      => $firstRow['gallery_image'],
+        'gallery_address'    => $firstRow['gallery_address'],
+        'gallery_start_time' => $firstRow['gallery_start_time'],
+        'gallery_end_time'   => $firstRow['gallery_end_time'],
+        'gallery_closed_day' => $firstRow['gallery_closed_day'],
+        'gallery_category'   => $firstRow['gallery_category'],
+        'gallery_description'=> $firstRow['gallery_description'],
+        'gallery_eng_name'   => $firstRow['gallery_eng_name'],
+        'gallery_latitude'   => isset($firstRow['gallery_latitude']) ? (float)$firstRow['gallery_latitude'] : null,
+        'gallery_longitude'  => isset($firstRow['gallery_longitude']) ? (float)$firstRow['gallery_longitude'] : null,
+        'gallery_phone'      => $firstRow['gallery_phone'],
+        'gallery_email'      => $firstRow['gallery_email'],
+        'gallery_homepage'   => $firstRow['gallery_homepage'],
+        'gallery_sns'        => $firstRow['gallery_sns'],
+        'like_count'         => (int)$firstRow['like_count'],
+        'is_liked'           => (bool)$firstRow['is_liked'],
+        'exhibitions'        => []
+    ];
 
-        foreach ($rows as $row) {
-            if (!empty($row['exhibition_id'])) {
-                $gallery['exhibitions'][] = [
-                    'id'     => (int)$row['exhibition_id'],
-                    'title'  => $row['exhibition_title'],
-                    'poster' => $row['exhibition_poster'],
-                    'status' => $row['exhibition_status']
-                ];
-            }
+    foreach ($rows as $row) {
+        if (!empty($row['exhibition_id'])) {
+            $gallery['exhibitions'][] = [
+                'id'     => (int)$row['exhibition_id'],
+                'title'  => $row['exhibition_title'],
+                'poster' => $row['exhibition_poster'],
+                'status' => $row['exhibition_status']
+            ];
         }
-
-        return $gallery;
     }
+
+    // ★ 항상 image_url 포함
+    // 도메인까지 포함하려면 $_ENV['APP_BASE_URL'] 사용해서 prefix 붙이기
+    $base = rtrim($_ENV['APP_BASE_URL'] ?? '', '/');
+    $path = "/api/galleries/{$gallery['id']}/image";
+    $gallery['image_url'] = $base ? ($base . $path) : $path;
+
+    return $gallery;
+}
+
 
     // ★ 추가: 이미지(BLOB)만 조회용
     public function getImageById($id) {
