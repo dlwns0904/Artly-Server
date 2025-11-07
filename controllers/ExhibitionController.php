@@ -191,89 +191,101 @@ class ExhibitionController {
 
     /**
      * @OA\Post(
-     *     path="/api/exhibitions",
-     *     summary="전시회 등록 (multipart 또는 JSON)",
-     *     tags={"Exhibition"},
-     *     security={{"bearerAuth":{}}},
-     *     @OA\RequestBody(
-     *         required=true,
-     *         @OA\MediaType(
-     *           mediaType="multipart/form-data",
-     *           @OA\Schema(
-     *             type="object",
-     *             @OA\Property(property="exhibition_title", type="string"),
-     *             @OA\Property(property="exhibition_category", type="string"),
-     *             @OA\Property(property="exhibition_start_date", type="string", format="date"),
-     *             @OA\Property(property="exhibition_end_date", type="string", format="date"),
-     *             @OA\Property(property="exhibition_start_time", type="string", format="time"),
-     *             @OA\Property(property="exhibition_end_time", type="string", format="time"),
-     *             @OA\Property(property="exhibition_location", type="string"),
-     *             @OA\Property(property="exhibition_price", type="integer"),
-     *             @OA\Property(property="exhibition_tag", type="string"),
-     *             @OA\Property(property="exhibition_status", type="string", enum={"scheduled","exhibited","ended"}),
-     *             @OA\Property(property="exhibition_phone", type="string"),
-     *             @OA\Property(property="exhibition_homepage", type="string"),
-     *             @OA\Property(property="exhibition_poster_file", type="string", format="binary"),
-     *             @OA\Property(property="exhibition_poster_url", type="string", description="외부 URL로 저장 시")
-     *           )
-     *         )
-     *     ),
-     *     @OA\Response(response=201, description="등록 성공")
+     *   path="/api/exhibitions",
+     *   summary="전시회 등록 (multipart 또는 JSON)",
+     *   tags={"Exhibition"},
+     *   security={{"bearerAuth":{}}},
+     *   @OA\RequestBody(
+     *     required=true,
+     *     @OA\MediaType(
+     *       mediaType="multipart/form-data",
+     *       @OA\Schema(
+     *         type="object",
+     *         @OA\Property(property="gallery_id", type="integer", example=123), // ✅ 추가
+     *         @OA\Property(property="exhibition_title", type="string"),
+     *         @OA\Property(property="exhibition_category", type="string"),
+     *         @OA\Property(property="exhibition_start_date", type="string", format="date"),
+     *         @OA\Property(property="exhibition_end_date", type="string", format="date"),
+     *         @OA\Property(property="exhibition_start_time", type="string", format="time"),
+     *         @OA\Property(property="exhibition_end_time", type="string", format="time"),
+     *         @OA\Property(property="exhibition_location", type="string"),
+     *         @OA\Property(property="exhibition_price", type="integer"),
+     *         @OA\Property(property="exhibition_tag", type="string"),
+     *         @OA\Property(property="exhibition_status", type="string", enum={"scheduled","exhibited","ended"}),
+     *         @OA\Property(property="exhibition_phone", type="string"),
+     *         @OA\Property(property="exhibition_homepage", type="string"),
+     *         @OA\Property(property="exhibition_poster_file", type="string", format="binary"),
+     *         @OA\Property(property="exhibition_poster_url", type="string")
+     *       )
+     *     )
+     *   ),
+     *   @OA\Response(response=201, description="등록 성공")
      * )
      */
     public function createExhibition() {
-        $user = $this->auth->authenticate(); // JWT 검사
-        $userId = $user->user_id;
+    $user = $this->auth->authenticate(); // JWT 검사만 유지
 
-        $userData   = $this->userModel->getById($userId);
-        $gallery_id = $userData['gallery_id'] ?? null;
-        if (!$gallery_id || $gallery_id <= 0) {
-            http_response_code(403);
-            echo json_encode(['message' => '권한이 없습니다.'], JSON_UNESCAPED_UNICODE);
-            exit;
+    // 요청 형태 판단
+    $isMultipart = isset($_SERVER['CONTENT_TYPE']) && stripos($_SERVER['CONTENT_TYPE'], 'multipart/form-data') !== false;
+
+    // 공통 데이터 파싱
+    if ($isMultipart) {
+        // ✅ gallery_id 프론트에서 받기 (필수)
+        $gallery_id = isset($_POST['gallery_id']) ? (int)$_POST['gallery_id'] : 0;
+        if ($gallery_id <= 0) {
+            http_response_code(400);
+            echo json_encode(['message' => 'gallery_id는 필수입니다.'], JSON_UNESCAPED_UNICODE);
+            return;
         }
 
-        $isMultipart = isset($_SERVER['CONTENT_TYPE']) && stripos($_SERVER['CONTENT_TYPE'], 'multipart/form-data') !== false;
+        $data = [
+            'exhibition_title'      => $_POST['exhibition_title']      ?? null,
+            'exhibition_category'   => $_POST['exhibition_category']   ?? null,
+            'exhibition_start_date' => $_POST['exhibition_start_date'] ?? null,
+            'exhibition_end_date'   => $_POST['exhibition_end_date']   ?? null,
+            'exhibition_start_time' => $_POST['exhibition_start_time'] ?? null,
+            'exhibition_end_time'   => $_POST['exhibition_end_time']   ?? null,
+            'exhibition_location'   => $_POST['exhibition_location']   ?? null,
+            'exhibition_price'      => $_POST['exhibition_price']      ?? null,
+            'exhibition_tag'        => $_POST['exhibition_tag']        ?? null,
+            'exhibition_status'     => $_POST['exhibition_status']     ?? null,
+            'exhibition_phone'      => $_POST['exhibition_phone']      ?? null,
+            'exhibition_homepage'   => $_POST['exhibition_homepage']   ?? null,
+        ];
 
-        if ($isMultipart) {
-            $data = [
-                'exhibition_title'      => $_POST['exhibition_title']      ?? null,
-                'exhibition_category'   => $_POST['exhibition_category']   ?? null,
-                'exhibition_start_date' => $_POST['exhibition_start_date'] ?? null,
-                'exhibition_end_date'   => $_POST['exhibition_end_date']   ?? null,
-                'exhibition_start_time' => $_POST['exhibition_start_time'] ?? null,
-                'exhibition_end_time'   => $_POST['exhibition_end_time']   ?? null,
-                'exhibition_location'   => $_POST['exhibition_location']   ?? null,
-                'exhibition_price'      => $_POST['exhibition_price']      ?? null,
-                'exhibition_tag'        => $_POST['exhibition_tag']        ?? null,
-                'exhibition_status'     => $_POST['exhibition_status']     ?? null,
-                'exhibition_phone'      => $_POST['exhibition_phone']      ?? null,
-                'exhibition_homepage'   => $_POST['exhibition_homepage']   ?? null,
-            ];
-
-            // 파일 우선, 없으면 URL
-            if (!empty($_FILES['exhibition_poster_file']) && $_FILES['exhibition_poster_file']['error'] === UPLOAD_ERR_OK) {
-                $relPath = $this->saveUploadedImage($_FILES['exhibition_poster_file'], 'exhibition');
-                $data['exhibition_poster'] = $relPath; // DB엔 상대경로
-            } else {
-                $url = $_POST['exhibition_poster_url'] ?? null;
-                $data['exhibition_poster'] = $url ?: null;
-            }
+        // 파일 우선 저장, 없으면 URL
+        if (!empty($_FILES['exhibition_poster_file']) && $_FILES['exhibition_poster_file']['error'] === UPLOAD_ERR_OK) {
+            $relPath = $this->saveUploadedImage($_FILES['exhibition_poster_file'], 'exhibition');
+            $data['exhibition_poster'] = $relPath; // DB엔 상대경로 저장
         } else {
-            $data = json_decode(file_get_contents('php://input'), true) ?? [];
+            $url = $_POST['exhibition_poster_url'] ?? null;
+            $data['exhibition_poster'] = $url ?: null;
         }
-
-        $createdExhibition = $this->model->create($data, $gallery_id);
-        if ($createdExhibition) {
-            // ✅ 응답 시 포스터 절대 URL 변환
-            $createdExhibition['exhibition_poster'] = $this->toAbsoluteUrl($createdExhibition['exhibition_poster'] ?? null);
-            http_response_code(201);
-            echo json_encode(['message' => 'Exhibition created successfully', 'data' => $createdExhibition], JSON_UNESCAPED_UNICODE);
-        } else {
-            http_response_code(500);
-            echo json_encode(['message' => 'Failed to create exhibition']);
+    } else {
+        $raw = json_decode(file_get_contents('php://input'), true) ?? [];
+        // ✅ gallery_id 프론트에서 받기 (필수)
+        $gallery_id = isset($raw['gallery_id']) ? (int)$raw['gallery_id'] : 0;
+        if ($gallery_id <= 0) {
+            http_response_code(400);
+            echo json_encode(['message' => 'gallery_id는 필수입니다.'], JSON_UNESCAPED_UNICODE);
+            return;
         }
+        $data = $raw;
     }
+
+    // 생성
+    $createdExhibition = $this->model->create($data, $gallery_id);
+    if ($createdExhibition) {
+        // 응답 시 포스터 절대 URL 변환
+        $createdExhibition['exhibition_poster'] = $this->toAbsoluteUrl($createdExhibition['exhibition_poster'] ?? null);
+        http_response_code(201);
+        echo json_encode(['message' => 'Exhibition created successfully', 'data' => $createdExhibition], JSON_UNESCAPED_UNICODE);
+    } else {
+        http_response_code(500);
+        echo json_encode(['message' => 'Failed to create exhibition']);
+    }
+}
+
 
     /**
      * @OA\Put(
