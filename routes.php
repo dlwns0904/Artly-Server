@@ -193,7 +193,7 @@ elseif ($requestMethod === 'PATCH' && preg_match('#^/api/reservations/(\d+)$#', 
 }
 
 /* ───────────────────────── Upload ───────────────────────── */
-elseif ($method === 'POST' && $uri === '/api/upload/image') {
+elseif ($requestMethod === 'POST' && $requestUri === '/api/upload/image') {
     (new \Controllers\UploadController())->uploadImage();
     exit;
 }
