@@ -73,7 +73,7 @@ class UploadController
      *   path="/api/upload/image",
      *   summary="Tiptap 에디터용 단일 이미지 업로드",
      *   tags={"Upload"},
-     *   security={{"bearerAuth":{}}},  // 공개 업로드면 이 줄 삭제
+     *   security={{"bearerAuth":{}}},
      *   @OA\RequestBody(
      *     required=true,
      *     @OA\MediaType(
@@ -102,7 +102,7 @@ class UploadController
      */
     public function uploadImage()
     {
-        // 인증을 걸고 싶지 않다면 다음 1줄을 삭제
+        // 인증 X면 삭제
         $this->auth->authenticate();
 
         header('Content-Type: application/json; charset=utf-8');
