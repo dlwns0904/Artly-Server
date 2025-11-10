@@ -190,6 +190,12 @@ elseif ($requestMethod === 'PATCH' && preg_match('#^/api/reservations/(\d+)$#', 
     (new ReservationController())->updateReservation($m[1]);
 }
 
+/* ───────────────────────── Upload ───────────────────────── */
+elseif ($method === 'POST' && $uri === '/api/upload/image') {
+    (new \Controllers\UploadController())->uploadImage();
+    exit;
+}
+
 
 /* ───────────────────────── Like ───────────────────────── */
 
