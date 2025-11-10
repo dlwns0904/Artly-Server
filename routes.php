@@ -24,6 +24,8 @@ use Controllers\LikeController;
 use Controllers\BookController;
 use Controllers\ChatController;
 use Controllers\ImageController;
+use Controllers\ImageGenerateConsoleController;
+use Controllers\UploadController;
 
 
 
