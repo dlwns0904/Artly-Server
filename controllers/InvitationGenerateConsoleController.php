@@ -188,7 +188,11 @@ class InvitationGenerateConsoleController {
             $invitations[] = "초대장 문구 생성에 실패했습니다. (API 응답은 받았으나 내용이 비어있습니다)";
         }
     
-        return $invitations;
+        // ✅ 결과를 JSON으로 인코딩하여 클라이언트에 전송
+        http_response_code(200);
+        header('Content-Type: application/json');
+        echo json_encode($invitations, JSON_UNESCAPED_UNICODE);
+        return;
     }
 
     /**
@@ -303,7 +307,11 @@ class InvitationGenerateConsoleController {
             $finalInvitation[] = "초대장 문구 다듬기에 실패했습니다.";
         }
     
-        return $finalInvitation;
+        // ✅ 결과를 JSON으로 인코딩하여 클라이언트에 전송
+        http_response_code(200);
+        header('Content-Type: application/json');
+        echo json_encode($finalInvitation, JSON_UNESCAPED_UNICODE);
+        return;
     }
 
 
