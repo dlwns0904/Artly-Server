@@ -2172,6 +2172,9 @@
                                     "gallery_name": {
                                         "type": "string"
                                     },
+                                    "gallery_eng_name": {
+                                        "type": "string"
+                                    },
                                     "gallery_address": {
                                         "type": "string"
                                     },
@@ -2300,6 +2303,11 @@
                                     },
                                     "gallery_name": {
                                         "description": "갤러리 이름",
+                                        "type": "string",
+                                        "nullable": true
+                                    },
+                                    "gallery_eng_name": {
+                                        "description": "갤러리 영문 이름",
                                         "type": "string",
                                         "nullable": true
                                     },
