@@ -288,37 +288,59 @@ class ExhibitionController {
 
 
     /**
-     * @OA\Put(
-     *     path="/api/exhibitions/{id}",
-     *     summary="전시회 수정 (multipart 또는 JSON)",
-     *     tags={"Exhibition"},
-     *     security={{"bearerAuth":{}}},
-     *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
-     *     @OA\RequestBody(
-     *         required=true,
-     *         @OA\MediaType(
-     *           mediaType="multipart/form-data",
-     *           @OA\Schema(
-     *             type="object",
-     *             @OA\Property(property="exhibition_title", type="string"),
-     *             @OA\Property(property="exhibition_category", type="string"),
-     *             @OA\Property(property="exhibition_start_date", type="string", format="date"),
-     *             @OA\Property(property="exhibition_end_date", type="string", format="date"),
-     *             @OA\Property(property="exhibition_start_time", type="string", format="time"),
-     *             @OA\Property(property="exhibition_end_time", type="string", format="time"),
-     *             @OA\Property(property="exhibition_location", type="string"),
-     *             @OA\Property(property="exhibition_price", type="integer"),
-     *             @OA\Property(property="exhibition_tag", type="string"),
-     *             @OA\Property(property="exhibition_status", type="string", enum={"scheduled","exhibited","ended"}),
-     *             @OA\Property(property="exhibition_phone", type="string"),
-     *             @OA\Property(property="exhibition_homepage", type="string"),
-     *             @OA\Property(property="exhibition_poster_file", type="string", format="binary"),
-     *             @OA\Property(property="exhibition_poster_url", type="string")
-     *           )
-     *         )
-     *     ),
-     *     @OA\Response(response=200, description="수정 성공"),
-     *     @OA\Response(response=404, description="전시회 없음")
+     * @OA\Patch(
+     * path="/api/exhibitions/{id}",
+     * summary="전시회 일부 수정 (multipart 또는 JSON)",
+     * description="전시회 정보의 일부만 수정합니다.",
+     * tags={"Exhibition"},
+     * security={{"bearerAuth":{}}},
+     * @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+     * @OA\RequestBody(
+     * required=true,
+     * description="수정할 필드만 포함하여 전송합니다. (부분 업데이트)",
+     * @OA\MediaType(
+     * mediaType="multipart/form-data",
+     * @OA\Schema(
+     * type="object",
+     * @OA\Property(property="exhibition_title", type="string"),
+     * @OA\Property(property="exhibition_category", type="string"),
+     * @OA\Property(property="exhibition_start_date", type="string", format="date"),
+     * @OA\Property(property="exhibition_end_date", type="string", format="date"),
+     * @OA\Property(property="exhibition_start_time", type="string", format="time"),
+     * @OA\Property(property="exhibition_end_time", type="string", format="time"),
+     * @OA\Property(property="exhibition_location", type="string"),
+     * @OA\Property(property="exhibition_price", type="integer"),
+     * @OA\Property(property="exhibition_tag", type="string"),
+     * @OA\Property(property="exhibition_status", type="string", enum={"scheduled","exhibited","ended"}),
+     * @OA\Property(property="exhibition_phone", type="string"),
+     * @OA\Property(property="exhibition_homepage", type="string"),
+     * @OA\Property(property="exhibition_poster_file", type="string", format="binary", description="새로 업로드할 포스터 파일"),
+     * @OA\Property(property="exhibition_poster_url", type="string", description="포스터 URL을 직접 지정할 때")
+     * )
+     * ),
+     * @OA\MediaType(
+     * mediaType="application/json",
+     * @OA\Schema(
+     * type="object",
+     * @OA\Property(property="exhibition_title", type="string"),
+     * @OA\Property(property="exhibition_category", type="string"),
+     * @OA\Property(property="exhibition_start_date", type="string", format="date"),
+     * @OA\Property(property="exhibition_end_date", type="string", format="date"),
+     * @OA\Property(property="exhibition_start_time", type="string", format="time"),
+     * @OA\Property(property="exhibition_end_time", type="string", format="time"),
+     * @OA\Property(property="exhibition_location", type="string"),
+     * @OA\Property(property="exhibition_price", type="integer"),
+     * @OA\Property(property="exhibition_tag", type="string"),
+     * @OA\Property(property="exhibition_status", type="string", enum={"scheduled","exhibited","ended"}),
+     * @OA\Property(property="exhibition_phone", type="string"),
+     * @OA\Property(property="exhibition_homepage", type="string"),
+     * @OA\Property(property="exhibition_poster_url", type="string", description="포스터 URL을 직접 지정할 때")
+     * )
+     * )
+     * ),
+     * @OA\Response(response=200, description="수정 성공"),
+     * @OA\Response(response=403, description="권한 없음"),
+     * @OA\Response(response=404, description="전시회 없음")
      * )
      */
     public function updateExhibition($id) {
@@ -328,6 +350,12 @@ class ExhibitionController {
         $userData   = $this->userModel->getById($userId);
         $exhibition = $this->model->getById($id);
 
+        if (!$exhibition) {
+            http_response_code(404);
+            echo json_encode(['message' => 'Exhibition not found']);
+            exit;
+        }
+
         if ($userData['gallery_id'] != $exhibition['gallery_id']) {
             http_response_code(403);
             echo json_encode(['message' => '권한이 없습니다.'], JSON_UNESCAPED_UNICODE);
@@ -335,23 +363,49 @@ class ExhibitionController {
         }
 
         $isMultipart = isset($_SERVER['CONTENT_TYPE']) && stripos($_SERVER['CONTENT_TYPE'], 'multipart/form-data') !== false;
+        
+        $data = []; 
 
         if ($isMultipart) {
-            $data = [
-                'exhibition_title'      => $_POST['exhibition_title']      ?? null,
-                'exhibition_category'   => $_POST['exhibition_category']   ?? null,
-                'exhibition_start_date' => $_POST['exhibition_start_date'] ?? null,
-                'exhibition_end_date'   => $_POST['exhibition_end_date']   ?? null,
-                'exhibition_start_time' => $_POST['exhibition_start_time'] ?? null,
-                'exhibition_end_time'   => $_POST['exhibition_end_time']   ?? null,
-                'exhibition_location'   => $_POST['exhibition_location']   ?? null,
-                'exhibition_price'      => $_POST['exhibition_price']      ?? null,
-                'exhibition_tag'        => $_POST['exhibition_tag']        ?? null,
-                'exhibition_status'     => $_POST['exhibition_status']     ?? null,
-                'exhibition_phone'      => $_POST['exhibition_phone']      ?? null,
-                'exhibition_homepage'   => $_POST['exhibition_homepage']   ?? null,
-            ];
+            // 'isset()'으로 존재하는 값만 $data에 추가
+            if (isset($_POST['exhibition_title'])) {
+                $data['exhibition_title'] = $_POST['exhibition_title'];
+            }
+            if (isset($_POST['exhibition_category'])) {
+                $data['exhibition_category'] = $_POST['exhibition_category'];
+            }
+            if (isset($_POST['exhibition_start_date'])) {
+                $data['exhibition_start_date'] = $_POST['exhibition_start_date'];
+            }
+            if (isset($_POST['exhibition_end_date'])) {
+                $data['exhibition_end_date'] = $_POST['exhibition_end_date'];
+            }
+            if (isset($_POST['exhibition_start_time'])) {
+                $data['exhibition_start_time'] = $_POST['exhibition_start_time'];
+            }
+            if (isset($_POST['exhibition_end_time'])) {
+                $data['exhibition_end_time'] = $_POST['exhibition_end_time'];
+            }
+            if (isset($_POST['exhibition_location'])) {
+                $data['exhibition_location'] = $_POST['exhibition_location'];
+            }
+            if (isset($_POST['exhibition_price'])) {
+                $data['exhibition_price'] = $_POST['exhibition_price'];
+            }
+            if (isset($_POST['exhibition_tag'])) {
+                $data['exhibition_tag'] = $_POST['exhibition_tag'];
+            }
+            if (isset($_POST['exhibition_status'])) {
+                $data['exhibition_status'] = $_POST['exhibition_status'];
+            }
+            if (isset($_POST['exhibition_phone'])) {
+                $data['exhibition_phone'] = $_POST['exhibition_phone'];
+            }
+            if (isset($_POST['exhibition_homepage'])) {
+                $data['exhibition_homepage'] = $_POST['exhibition_homepage'];
+            }
 
+            // 파일 처리 로직
             if (!empty($_FILES['exhibition_poster_file']) && $_FILES['exhibition_poster_file']['error'] === UPLOAD_ERR_OK) {
                 $relPath = $this->saveUploadedImage($_FILES['exhibition_poster_file'], 'exhibition');
                 $data['exhibition_poster'] = $relPath;
@@ -359,7 +413,16 @@ class ExhibitionController {
                 $data['exhibition_poster'] = $_POST['exhibition_poster_url'] ?: null;
             }
         } else {
-            $data = json_decode(file_get_contents('php://input'), true) ?? [];
+            // JSON 방식은 이미 PATCH처럼 동작 (보내준 필드만 포함)
+            $jsonData = json_decode(file_get_contents('php://input'), true) ?? [];
+            $data = array_merge($data, $jsonData);
+        }
+        
+        // $data가 비어있으면 업데이트할 필요가 없음
+        if (empty($data)) {
+            http_response_code(200); 
+            echo json_encode(['message' => 'No fields to update', 'data' => $exhibition], JSON_UNESCAPED_UNICODE);
+            exit;
         }
 
         $gallery_id = $exhibition['gallery_id'];
@@ -372,8 +435,9 @@ class ExhibitionController {
             }
             echo json_encode(['message' => 'Exhibition updated successfully', 'data' => $updatedExhibition], JSON_UNESCAPED_UNICODE);
         } else {
-            http_response_code(404);
-            echo json_encode(['message' => 'Exhibition not found or update failed']);
+            // 이 구문은 $this->model->update가 0 (변경된 행 없음)을 반환할 때 도달할 수 있음
+            http_response_code(500);
+            echo json_encode(['message' => 'Exhibition update failed']);
         }
     }
 

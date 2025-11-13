@@ -225,18 +225,18 @@ class GalleryController {
      * @OA\Response(response=200, description="갤러리 수정 완료")
      * )
      */
-    public function updateGallery($id) { // (함수 이름을 patchGallery 등으로 바꿔도 좋습니다)
+    public function updateGallery($id) { 
         $decoded = $this->auth->decodeToken();
         $userId  = $decoded && isset($decoded->user_id) ? $decoded->user_id : null;
 
         $isMultipart = isset($_SERVER['CONTENT_TYPE']) && stripos($_SERVER['CONTENT_TYPE'], 'multipart/form-data') !== false;
 
-        // 2. PATCH 로직의 핵심: 빈 배열로 시작
+        // PATCH 로직을 위해 빈 배열로 시작
         $data = []; 
         $data['user_id'] = $userId; // user_id는 항상 포함
 
         if ($isMultipart) {
-            // 3. '?? null' 대신, isset()으로 체크하여 '존재하는 값만' $data에 추가
+            // isset()으로 체크하여 '존재하는 값만' $data에 추가
             if (isset($_POST['gallery_name'])) {
                 $data['gallery_name'] = $_POST['gallery_name'];
             }
@@ -289,14 +289,12 @@ class GalleryController {
             // --- 파일 처리 끝 ---
 
         } else {
-            // 4. JSON 방식은 이미 PATCH처럼 동작합니다.
-            // (보내준 필드만 $jsonData에 포함됨)
+            // JSON 방식은 이미 PATCH처럼 동작
             $jsonData = json_decode(file_get_contents("php://input"), true) ?? [];
             $data = array_merge($data, $jsonData); // user_id와 JSON 데이터 병합
         }
 
-        // 5. 중요: 이 모델이 $data 배열에 '있는' 키만 업데이트하도록 구현되어 있어야 합니다.
-        // (보통의 ORM이나 쿼리 빌더는 이렇게 동작합니다.)
+        // $data 배열에 '있는' 키만 업데이트하도록 구현
         $updated = $this->model->update($id, $data);
 
         // --- 응답 로직 (동일) ---
