@@ -26,6 +26,7 @@ use Controllers\ChatController;
 use Controllers\ImageController;
 use Controllers\ImageGenerateConsoleController;
 use Controllers\UploadController;
+use Controllers\InvitationGenerateConsoleController;
 
 
 
@@ -248,6 +249,15 @@ elseif ($requestMethod === 'POST' && $requestUri === '/api/chats') {
 /* ───────────────────────── Image (console) ───────────────────────── */
 elseif ($requestMethod === 'POST' && $requestUri === '/api/console/images/generate') {
     (new \Controllers\ImageGenerateConsoleController())->create();
+}
+
+
+/* ───────────────────────── Invatation (console) ───────────────────────── */
+elseif ($requestMethod === 'POST' && $requestUri === '/api/console/invitation/create') {
+    (new \Controllers\InvitationGenerateConsoleController())->createInvitations();
+}
+elseif ($requestMethod === 'POST' && $requestUri === '/api/console/invitation/refine') {
+    (new \Controllers\InvitationGenerateConsoleController())->refineInvitation();
 }
 
 
