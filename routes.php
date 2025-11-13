@@ -108,7 +108,7 @@ elseif ($requestMethod === 'GET' && preg_match('#^/api/galleries$#', $requestUri
 elseif ($requestMethod === 'POST' && $requestUri === '/api/galleries') {
     (new GalleryController())->createGallery();
 }
-elseif ($requestMethod === 'PUT' && preg_match('#^/api/galleries/(\d+)$#', $requestUri, $m)) {
+elseif ($requestMethod === 'PATCH' && preg_match('#^/api/galleries/(\d+)$#', $requestUri, $m)) {
     (new GalleryController())->updateGallery($m[1]);
 }
 elseif ($requestMethod === 'DELETE' && preg_match('#^/api/galleries/(\d+)$#', $requestUri, $m)) {
