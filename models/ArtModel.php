@@ -95,31 +95,37 @@ class ArtModel {
     }
 
     public function update($id, $data) {
-        $stmt = $this->pdo->prepare("
-            UPDATE APIServer_art SET
-                art_image      = :image,
-                artist_id      = :artist_id,
-                art_title      = :title,
-                art_description= :description,
-                art_docent     = :docent,
-                art_material   = :material,
-                art_size       = :size,     
-                art_year       = :year,       
-                update_dtm     = NOW()
-            WHERE id = :id
-        ");
+        $setParts = [];
+        $params = [':id' => $id];
 
-        return $stmt->execute([
-            ':image'      => $data['art_image']        ?? null,
-            ':artist_id'  => $data['artist_id']        ?? null,
-            ':title'      => $data['art_title']        ?? null,
-            ':description'=> $data['art_description']  ?? null,
-            ':docent'     => $data['art_docent']       ?? null,
-            ':material'   => $data['art_material']     ?? null,
-            ':size'       => $data['art_size']         ?? null,
-            ':year'       => $data['art_year']         ?? null, 
-            ':id'         => $id
-        ]);
+        $fieldMap = [
+            'art_image'       => ':image',
+            'artist_id'       => ':artist_id',
+            'art_title'       => ':title',
+            'art_description' => ':description',
+            'art_docent'      => ':docent',
+            'art_material'    => ':material',
+            'art_size'        => ':size',
+            'art_year'        => ':year',
+        ];
+
+        foreach ($fieldMap as $column => $placeholder) {
+            // "array_key_exists"를 사용하여 키 존재 여부 확인
+            if (array_key_exists($column, $data)) {
+                $setParts[] = "$column = $placeholder";
+                $params[$placeholder] = $data[$column];
+            }
+        }
+
+        if (empty($setParts)) {
+            return true; // 변경된 내용이 없지만 성공으로 간주
+        }
+
+        $setParts[] = "update_dtm = NOW()";
+        $sql = "UPDATE APIServer_art SET " . implode(', ', $setParts) . " WHERE id = :id";
+
+        $stmt = $this->pdo->prepare($sql);
+        return $stmt->execute($params);
     }
 
     public function delete($id) {

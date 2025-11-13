@@ -62,56 +62,50 @@ class GalleryModel {
      * 갤러리 수정
      */
     public function update($id, $data) {
-    $fields = [
-        'gallery_name'       => ':name',
-        'gallery_image'      => ':image',
-        'gallery_address'    => ':address',
-        'gallery_start_time' => ':start_time',
-        'gallery_end_time'   => ':end_time',
-        'gallery_closed_day' => ':closed_day',
-        'gallery_category'   => ':category',
-        'gallery_description'=> ':description',
-        'gallery_latitude'   => ':latitude',
-        'gallery_longitude'  => ':longitude',
-        'gallery_phone'      => ':phone',
-        'gallery_email'      => ':email',
-        'gallery_homepage'   => ':homepage',
-        // gallery_sns는 조건부로 아래에서 추가
-    ];
+        $setParts = [];
+        $params = [':id' => $id];
 
-    $setParts = [];
-    foreach ($fields as $col => $ph) $setParts[] = "$col = $ph";
+        $fieldMap = [
+            'gallery_name'       => ':name',
+            'gallery_image'      => ':image',
+            'gallery_address'    => ':address',
+            'gallery_start_time' => ':start_time',
+            'gallery_end_time'   => ':end_time',
+            'gallery_closed_day' => ':closed_day',
+            'gallery_category'   => ':category',
+            'gallery_description'=> ':description',
+            'gallery_latitude'   => ':latitude',
+            'gallery_longitude'  => ':longitude',
+            'gallery_phone'      => ':phone',
+            'gallery_email'      => ':email',
+            'gallery_homepage'   => ':homepage',
+        ];
 
-    $params = [
-        ':id'         => $id,
-        ':name'       => $data['gallery_name'] ?? null,
-        ':image'      => $data['gallery_image'] ?? null,
-        ':address'    => $data['gallery_address'] ?? null,
-        ':start_time' => $data['gallery_start_time'] ?? null,
-        ':end_time'   => $data['gallery_end_time'] ?? null,
-        ':closed_day' => $data['gallery_closed_day'] ?? null,
-        ':category'   => $data['gallery_category'] ?? null,
-        ':description'=> $data['gallery_description'] ?? null,
-        ':latitude'   => $data['gallery_latitude'] ?? null,
-        ':longitude'  => $data['gallery_longitude'] ?? null,
-        ':phone'      => $data['gallery_phone'] ?? null,
-        ':email'      => $data['gallery_email'] ?? null,
-        ':homepage'   => $data['gallery_homepage'] ?? null,
-    ];
+        foreach ($fieldMap as $column => $placeholder) {
+            // "?? null" 대신 "array_key_exists" 사용
+            if (array_key_exists($column, $data)) {
+                $setParts[] = "$column = $placeholder";
+                $params[$placeholder] = $data[$column]; // (null이 전송되어도 DB에 null이 반영됨)
+            }
+        }
 
-    // 요청 바디에 gallery_sns 키가 있을 때만 업데이트
-    if (array_key_exists('gallery_sns', $data)) {
-        $setParts[] = "gallery_sns = :sns";
-        $params[':sns'] = $this->normalizeSns($data['gallery_sns']);
+        if (array_key_exists('gallery_sns', $data)) {
+            $setParts[] = "gallery_sns = :sns";
+            $params[':sns'] = $this->normalizeSns($data['gallery_sns']);
+        }
+
+        if (empty($setParts)) {
+            // 수정할 내용이 없으므로 현재 데이터를 그대로 반환
+            return $this->getById($id, $data['user_id'] ?? null);
+        }
+
+        $sql = "UPDATE APIServer_gallery SET " . implode(', ', $setParts) . " WHERE id = :id";
+
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute($params);
+
+        return $this->getById($id, $data['user_id'] ?? null);
     }
-
-    $sql = "UPDATE APIServer_gallery SET " . implode(', ', $setParts) . " WHERE id = :id";
-
-    $stmt = $this->pdo->prepare($sql);
-    $stmt->execute($params);
-
-    return $this->getById($id, $data['user_id'] ?? null);
-}
 
     /**
      * 갤러리 삭제
