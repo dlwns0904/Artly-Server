@@ -18,7 +18,7 @@ class InvitationGenerateConsoleController {
      * 생성자: API 키를 미리 로드하고 검증합니다.
      */
     public function __construct() {
-        $this->apiKey = getenv('OPENAI_API_KEY');
+        $this->apiKey = $_ENV['OPENAI_API_KEY'];
         if (empty($this->apiKey)) {
             // API 키가 없으면 컨트롤러 생성을 중단시킵니다.
             throw new \Exception('OPENAI_API_KEY가 .env 파일에 설정되지 않았습니다.');
@@ -75,7 +75,23 @@ class InvitationGenerateConsoleController {
      * )
      * )
      */
-    public function createInvitations($eventTopic, $userRequirements) {
+    public function createInvitations() {
+        $jsonData = json_decode(file_get_contents("php://input"), true);
+        if (!is_array($jsonData)) {
+            http_response_code(400); // Bad Request
+            echo json_encode(['message' => 'Invalid JSON input.'], JSON_UNESCAPED_UNICODE);
+            return;
+        }
+
+        $eventTopic = $jsonData['eventTopic'] ?? null;
+        $userRequirements = $jsonData['userRequirements'] ?? null;
+
+        if (empty($eventTopic) || $userRequirements === null) { // userRequirements는 빈 문자열일 수 있음
+            http_response_code(400);
+            echo json_encode(['message' => '필수 입력값이 누락되었습니다. (eventTopic, userRequirements)'], JSON_UNESCAPED_UNICODE);
+            return;
+        }
+
         // ✅ 오늘 날짜 설정 (예: 2025년 11월 13일)
         setlocale(LC_TIME, 'ko_KR.UTF-8');
         $todayDate = date('Y년 n월 j일');
@@ -231,8 +247,24 @@ class InvitationGenerateConsoleController {
      * )
      * )
      */
-    public function refineInvitation($selectedInvitation, $eventTopic, $userRequirements) {
-        
+    public function refineInvitation() {
+        $jsonData = json_decode(file_get_contents("php://input"), true);
+        if (!is_array($jsonData)) {
+            http_response_code(400); // Bad Request
+            echo json_encode(['message' => 'Invalid JSON input.'], JSON_UNESCAPED_UNICODE);
+            return;
+        }
+
+        $selectedInvitation = $jsonData['selectedInvitation'] ?? null;
+        $eventTopic = $jsonData['eventTopic'] ?? null;
+        $userRequirements = $jsonData['userRequirements'] ?? null;
+
+        if (empty($selectedInvitation) || empty($eventTopic) || $userRequirements === null) { 
+            http_response_code(400);
+            echo json_encode(['message' => '필수 입력값이 누락되었습니다. (selectedInvitation, eventTopic, userRequirements)'], JSON_UNESCAPED_UNICODE);
+            return;
+        }
+
         // ✅ 가이드라인 (시스템 프롬프트)
         $guidelines = "
             아래 초대장 문구를 기반으로, 새로운 초대장 문구를 생성해주세요. 
