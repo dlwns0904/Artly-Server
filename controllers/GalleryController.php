@@ -98,6 +98,7 @@ class GalleryController {
      *           @OA\Schema(
      *             type="object",
      *             @OA\Property(property="gallery_name", type="string"),
+     *             @OA\Property(property="gallery_eng_name", type="string"),
      *             @OA\Property(property="gallery_address", type="string"),
      *             @OA\Property(property="gallery_start_time", type="string", example="10:00"),
      *             @OA\Property(property="gallery_end_time", type="string", example="19:00"),
@@ -128,6 +129,7 @@ class GalleryController {
         if ($isMultipart) {
             $data = [
                 'gallery_name'       => $_POST['gallery_name']       ?? null,
+                'gallery_eng_name'   => $_POST['gallery_eng_name']   ?? null,
                 'gallery_address'    => $_POST['gallery_address']    ?? null,
                 'gallery_start_time' => $_POST['gallery_start_time'] ?? null,
                 'gallery_end_time'   => $_POST['gallery_end_time']   ?? null,
@@ -192,6 +194,7 @@ class GalleryController {
      * description="Method Spoofing을 위해 'PATCH' 값을 전송해야 합니다."
      * ),
      * @OA\Property(property="gallery_name", type="string", description="갤러리 이름", nullable=true),
+     * @OA\Property(property="gallery_eng_name", type="string", description="갤러리 영문 이름", nullable=true),
      * @OA\Property(property="gallery_address", type="string", description="갤러리 주소", nullable=true),
      * @OA\Property(property="gallery_start_time", type="string", example="10:00", description="오픈 시간", nullable=true),
      * @OA\Property(property="gallery_end_time", type="string", example="19:00", description="마감 시간", nullable=true),
@@ -237,6 +240,9 @@ class GalleryController {
             // isset()으로 체크하여 '존재하는 값만' $data에 추가
             if (isset($_POST['gallery_name']) && $_POST['gallery_name'] !== '') {
                 $data['gallery_name'] = $_POST['gallery_name'];
+            }
+            if (isset($_POST['gallery_eng_name']) && $_POST['gallery_eng_name'] !== '') {
+                $data['gallery_eng_name'] = $_POST['gallery_eng_name'];
             }
             if (isset($_POST['gallery_address']) && $_POST['gallery_address'] !== '') {
                 $data['gallery_address'] = $_POST['gallery_address'];

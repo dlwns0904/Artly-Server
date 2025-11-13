@@ -19,14 +19,14 @@ class GalleryModel {
     public function create($data) {
         $sql = "
             INSERT INTO APIServer_gallery (
-                gallery_name, gallery_image, gallery_address,
+                gallery_name, gallery_eng_name, gallery_image, gallery_address,
                 gallery_start_time, gallery_end_time, gallery_closed_day,
                 gallery_category, gallery_description,
                 gallery_latitude, gallery_longitude,
                 gallery_phone, gallery_email, gallery_homepage, gallery_sns,
                 user_id
             ) VALUES (
-                :name, :image, :address,
+                :name, :eng_name, :image, :address,
                 :start_time, :end_time, :closed_day,
                 :category, :description,
                 :latitude, :longitude,
@@ -38,6 +38,7 @@ class GalleryModel {
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute([
             ':name'       => $data['gallery_name'],
+            ':eng_name'   => $data['gallery_eng_name'],
             ':image'      => $data['gallery_image'] ?? null,
             ':address'    => $data['gallery_address'] ?? null,
             ':start_time' => $data['gallery_start_time'] ?? null,
@@ -67,6 +68,7 @@ class GalleryModel {
 
         $fieldMap = [
             'gallery_name'       => ':name',
+            'gallery_eng_name'   => ':eng_name',
             'gallery_image'      => ':image',
             'gallery_address'    => ':address',
             'gallery_start_time' => ':start_time',
@@ -123,6 +125,7 @@ class GalleryModel {
             SELECT
                 g.id AS gallery_id,
                 g.gallery_name,
+                g.gallery_eng_name,
                 g.gallery_image,
                 g.gallery_latitude,
                 g.gallery_longitude,
@@ -210,18 +213,19 @@ class GalleryModel {
             $results[] = [
                 'id'                 => (int)$row['gallery_id'],
                 'gallery_name'       => $row['gallery_name'],
+                'gallery_eng_name'   => $row['gallery_eng_name'],
                 'gallery_image'      => $row['gallery_image'],
                 'gallery_latitude'   => isset($row['gallery_latitude']) ? (float)$row['gallery_latitude'] : null,
                 'gallery_longitude'  => isset($row['gallery_longitude']) ? (float)$row['gallery_longitude'] : null,
                 'gallery_address'    => $row['gallery_address'],
                 'gallery_category'   => $row['gallery_category'],
                 'gallery_start_time' => $row['gallery_start_time'],
-                'gallery_end_time' => $row['gallery_end_time'],
-                'is_liked' => (bool)$row['is_liked'],
-                'gallery_phone' => $row['gallery_phone'],
-                'gallery_email' => $row['gallery_email'],
-                'gallery_homepage' => $row['gallery_homepage'],
-                'gallery_sns' => $row['gallery_sns'],
+                'gallery_end_time'   => $row['gallery_end_time'],
+                'is_liked'           => (bool)$row['is_liked'],
+                'gallery_phone'      => $row['gallery_phone'],
+                'gallery_email'      => $row['gallery_email'],
+                'gallery_homepage'   => $row['gallery_homepage'],
+                'gallery_sns'        => $row['gallery_sns'],
                 'gallery_end_time'   => $row['gallery_end_time'],
                 'gallery_phone'      => $row['gallery_phone'],
                 'gallery_email'      => $row['gallery_email'],
