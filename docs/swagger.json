@@ -2514,6 +2514,154 @@
                 }
             }
         },
+        "/api/console/invitation/create": {
+            "post": {
+                "tags": [
+                    "InvitationGenerate"
+                ],
+                "summary": "초대장 문구 3가지 초안 생성",
+                "description": "행사 주제와 요구사항을 바탕으로 AI(GPT)가 3가지 버전의 초대장 문구 초안을 생성하여 반환합니다.",
+                "operationId": "724f893f0c6f4edea3ca8302d9b22a57",
+                "requestBody": {
+                    "description": "초대장 생성을 위한 정보",
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "eventTopic",
+                                    "userRequirements"
+                                ],
+                                "properties": {
+                                    "eventTopic": {
+                                        "type": "string",
+                                        "example": "KAU 2025년 AI 졸업작품 전시회"
+                                    },
+                                    "userRequirements": {
+                                        "type": "string",
+                                        "example": "#따뜻한 #격려 #미래지향적, '모두의 미래를 위한 AI' 문구 반드시 포함"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "초대장 문구 3가지 생성 성공",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "string"
+                                    }
+                                },
+                                "example": [
+                                    "초대장 버전 1: AI가 그리는 미래, KAU 졸업작품전...",
+                                    "초대장 버전 2: 따뜻한 격려의 박수를 보낼 시간...",
+                                    "초대장 버전 3: '모두의 미래를 위한 AI'가 이곳에서 시작됩니다..."
+                                ]
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "API 호출 오류 또는 서버 내부 오류",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "error": {
+                                            "type": "string",
+                                            "example": "OpenAI API 오류 (HTTP 401): Incorrect API key provided..."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/api/console/invitation/refine": {
+            "post": {
+                "tags": [
+                    "InvitationGenerate"
+                ],
+                "summary": "선택된 초대장 문구 다듬기 (1개 생성)",
+                "description": "사용자가 선택한 초대장 초안과 추가 요구사항을 바탕으로 AI(GPT)가 최종 1개의 다듬어진 문구를 생성하여 반환합니다.",
+                "operationId": "4348260e3e9ea9c5a893ac66b1aa2f23",
+                "requestBody": {
+                    "description": "초대장 문구를 다듬기 위한 정보",
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "selectedInvitation",
+                                    "eventTopic",
+                                    "userRequirements"
+                                ],
+                                "properties": {
+                                    "selectedInvitation": {
+                                        "description": "사용자가 '초안 생성'에서 선택한 초대장 문구 원본",
+                                        "type": "string",
+                                        "example": "초대장 버전 1: AI가 그리는 미래..."
+                                    },
+                                    "eventTopic": {
+                                        "description": "참고할 기존 행사 주제",
+                                        "type": "string",
+                                        "example": "KAU 2025년 AI 졸업작품 전시회"
+                                    },
+                                    "userRequirements": {
+                                        "description": "다듬기 위한 추가/변경 요구사항",
+                                        "type": "string",
+                                        "example": "#좀 더 감성적으로, #전문적인 느낌 추가"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "초대장 문구 1개 다듬기 성공",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "string"
+                                    }
+                                },
+                                "example": [
+                                    "초대장 최종본: AI가 그리는 미래, 그 눈부신 서막이 KAU 2025년 졸업작품전에서 펼쳐집니다..."
+                                ]
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "API 호출 오류 또는 서버 내부 오류",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "error": {
+                                            "type": "string",
+                                            "example": "OpenAI API 오류 (HTTP 500): The server had an error..."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/api/likes": {
             "post": {
                 "tags": [
@@ -3896,6 +4044,10 @@
         {
             "name": "ImageGenerate",
             "description": "이미지 생성 콘솔 API"
+        },
+        {
+            "name": "InvitationGenerate",
+            "description": "초대장 문구 생성 콘솔 API"
         },
         {
             "name": "Like",
