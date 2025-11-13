@@ -427,6 +427,90 @@
                     }
                 }
             },
+            "post": {
+                "tags": [
+                    "Art"
+                ],
+                "summary": "[PATCH with method spoofing] 작품 일부 수정 (multipart/form-data 업로드)",
+                "description": "[매우중요] multipart/form-data로 파일과 함께 요청 시, 실제로는 POST 메서드를 사용하고 본문에 `_method=PATCH` 필드를 포함해야 합니다. (Method Spoofing)",
+                "operationId": "91ba28b082118a3f3c7cd1f605b26010",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "description": "수정할 필드만 전송합니다. (부분 업데이트)",
+                    "required": true,
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "required": [
+                                    "_method"
+                                ],
+                                "properties": {
+                                    "_method": {
+                                        "description": "Method Spoofing을 위해 'PATCH' 값을 전송해야 합니다.",
+                                        "type": "string",
+                                        "enum": [
+                                            "PATCH"
+                                        ],
+                                        "example": "PATCH"
+                                    },
+                                    "image": {
+                                        "description": "새 이미지(선택)",
+                                        "type": "string",
+                                        "format": "binary",
+                                        "nullable": true
+                                    },
+                                    "artist_id": {
+                                        "type": "integer",
+                                        "nullable": true
+                                    },
+                                    "art_title": {
+                                        "type": "string",
+                                        "nullable": true
+                                    },
+                                    "art_description": {
+                                        "type": "string",
+                                        "nullable": true
+                                    },
+                                    "art_docent": {
+                                        "type": "string",
+                                        "nullable": true
+                                    },
+                                    "art_material": {
+                                        "type": "string",
+                                        "nullable": true
+                                    },
+                                    "art_size": {
+                                        "type": "string",
+                                        "nullable": true
+                                    },
+                                    "art_year": {
+                                        "type": "string",
+                                        "nullable": true
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Updated"
+                    },
+                    "404": {
+                        "description": "Art not found"
+                    }
+                }
+            },
             "delete": {
                 "tags": [
                     "Art"
@@ -446,71 +530,6 @@
                 "responses": {
                     "200": {
                         "description": "Deleted"
-                    }
-                }
-            },
-            "patch": {
-                "tags": [
-                    "Art"
-                ],
-                "summary": "작품 일부 수정 (multipart/form-data 업로드)",
-                "description": "작품 정보의 일부 필드만 수정합니다.",
-                "operationId": "bcd6a1281ed7aa12b7678d0f91363a7b",
-                "parameters": [
-                    {
-                        "name": "id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "integer"
-                        }
-                    }
-                ],
-                "requestBody": {
-                    "description": "수정할 필드만 전송합니다. (부분 업데이트)",
-                    "required": true,
-                    "content": {
-                        "multipart/form-data": {
-                            "schema": {
-                                "properties": {
-                                    "image": {
-                                        "description": "새 이미지(선택)",
-                                        "type": "string",
-                                        "format": "binary"
-                                    },
-                                    "artist_id": {
-                                        "type": "integer"
-                                    },
-                                    "art_title": {
-                                        "type": "string"
-                                    },
-                                    "art_description": {
-                                        "type": "string"
-                                    },
-                                    "art_docent": {
-                                        "type": "string"
-                                    },
-                                    "art_material": {
-                                        "type": "string"
-                                    },
-                                    "art_size": {
-                                        "type": "string"
-                                    },
-                                    "art_year": {
-                                        "type": "string"
-                                    }
-                                },
-                                "type": "object"
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "200": {
-                        "description": "Updated"
-                    },
-                    "404": {
-                        "description": "Art not found"
                     }
                 }
             }
@@ -1639,6 +1658,201 @@
                     }
                 }
             },
+            "post": {
+                "tags": [
+                    "Exhibition"
+                ],
+                "summary": "[PATCH with method spoofing] 전시회 일부 수정 (multipart 또는 JSON)",
+                "description": "[매우중요] multipart/form-data로 파일과 함께 요청 시, 실제로는 POST 메서드를 사용하고 본문에 `_method=PATCH` 필드를 포함해야 합니다. (Method Spoofing)",
+                "operationId": "fde9bcacefbe922c4e53572aad351278",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "description": "수정할 필드만 포함하여 전송합니다. (부분 업데이트)",
+                    "required": true,
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "required": [
+                                    "_method"
+                                ],
+                                "properties": {
+                                    "_method": {
+                                        "description": "Method Spoofing을 위해 'PATCH' 값을 전송해야 합니다.",
+                                        "type": "string",
+                                        "enum": [
+                                            "PATCH"
+                                        ],
+                                        "example": "PATCH"
+                                    },
+                                    "exhibition_title": {
+                                        "type": "string",
+                                        "nullable": true
+                                    },
+                                    "exhibition_category": {
+                                        "type": "string",
+                                        "nullable": true
+                                    },
+                                    "exhibition_start_date": {
+                                        "type": "string",
+                                        "format": "date",
+                                        "nullable": true
+                                    },
+                                    "exhibition_end_date": {
+                                        "type": "string",
+                                        "format": "date",
+                                        "nullable": true
+                                    },
+                                    "exhibition_start_time": {
+                                        "type": "string",
+                                        "format": "time",
+                                        "nullable": true
+                                    },
+                                    "exhibition_end_time": {
+                                        "type": "string",
+                                        "format": "time",
+                                        "nullable": true
+                                    },
+                                    "exhibition_location": {
+                                        "type": "string",
+                                        "nullable": true
+                                    },
+                                    "exhibition_price": {
+                                        "type": "integer",
+                                        "nullable": true
+                                    },
+                                    "exhibition_tag": {
+                                        "type": "string",
+                                        "nullable": true
+                                    },
+                                    "exhibition_status": {
+                                        "type": "string",
+                                        "enum": [
+                                            "scheduled",
+                                            "exhibited",
+                                            "ended"
+                                        ],
+                                        "nullable": true
+                                    },
+                                    "exhibition_phone": {
+                                        "type": "string",
+                                        "nullable": true
+                                    },
+                                    "exhibition_homepage": {
+                                        "type": "string",
+                                        "nullable": true
+                                    },
+                                    "exhibition_poster_file": {
+                                        "description": "새로 업로드할 포스터 파일",
+                                        "type": "string",
+                                        "format": "binary",
+                                        "nullable": true
+                                    },
+                                    "exhibition_poster_url": {
+                                        "description": "포스터 URL을 직접 지정할 때",
+                                        "type": "string",
+                                        "nullable": true
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        },
+                        "application/json": {
+                            "schema": {
+                                "properties": {
+                                    "exhibition_title": {
+                                        "type": "string",
+                                        "nullable": true
+                                    },
+                                    "exhibition_category": {
+                                        "type": "string",
+                                        "nullable": true
+                                    },
+                                    "exhibition_start_date": {
+                                        "type": "string",
+                                        "format": "date",
+                                        "nullable": true
+                                    },
+                                    "exhibition_end_date": {
+                                        "type": "string",
+                                        "format": "date",
+                                        "nullable": true
+                                    },
+                                    "exhibition_start_time": {
+                                        "type": "string",
+                                        "format": "time",
+                                        "nullable": true
+                                    },
+                                    "exhibition_end_time": {
+                                        "type": "string",
+                                        "format": "time",
+                                        "nullable": true
+                                    },
+                                    "exhibition_location": {
+                                        "type": "string",
+                                        "nullable": true
+                                    },
+                                    "exhibition_price": {
+                                        "type": "integer",
+                                        "nullable": true
+                                    },
+                                    "exhibition_tag": {
+                                        "type": "string",
+                                        "nullable": true
+                                    },
+                                    "exhibition_status": {
+                                        "type": "string",
+                                        "enum": [
+                                            "scheduled",
+                                            "exhibited",
+                                            "ended"
+                                        ],
+                                        "nullable": true
+                                    },
+                                    "exhibition_phone": {
+                                        "type": "string",
+                                        "nullable": true
+                                    },
+                                    "exhibition_homepage": {
+                                        "type": "string",
+                                        "nullable": true
+                                    },
+                                    "exhibition_poster_url": {
+                                        "description": "포스터 URL을 직접 지정할 때",
+                                        "type": "string",
+                                        "nullable": true
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "수정 성공"
+                    },
+                    "403": {
+                        "description": "권한 없음"
+                    },
+                    "404": {
+                        "description": "전시회 없음"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
             "delete": {
                 "tags": [
                     "Exhibition"
@@ -1661,163 +1875,6 @@
                     },
                     "404": {
                         "description": "전시회 없음 또는 삭제 실패"
-                    }
-                },
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ]
-            },
-            "patch": {
-                "tags": [
-                    "Exhibition"
-                ],
-                "summary": "전시회 일부 수정 (multipart 또는 JSON)",
-                "description": "전시회 정보의 일부만 수정합니다.",
-                "operationId": "c2ebda3ece2b2d3345dc94e90afc8106",
-                "parameters": [
-                    {
-                        "name": "id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "integer"
-                        }
-                    }
-                ],
-                "requestBody": {
-                    "description": "수정할 필드만 포함하여 전송합니다. (부분 업데이트)",
-                    "required": true,
-                    "content": {
-                        "multipart/form-data": {
-                            "schema": {
-                                "properties": {
-                                    "exhibition_title": {
-                                        "type": "string"
-                                    },
-                                    "exhibition_category": {
-                                        "type": "string"
-                                    },
-                                    "exhibition_start_date": {
-                                        "type": "string",
-                                        "format": "date"
-                                    },
-                                    "exhibition_end_date": {
-                                        "type": "string",
-                                        "format": "date"
-                                    },
-                                    "exhibition_start_time": {
-                                        "type": "string",
-                                        "format": "time"
-                                    },
-                                    "exhibition_end_time": {
-                                        "type": "string",
-                                        "format": "time"
-                                    },
-                                    "exhibition_location": {
-                                        "type": "string"
-                                    },
-                                    "exhibition_price": {
-                                        "type": "integer"
-                                    },
-                                    "exhibition_tag": {
-                                        "type": "string"
-                                    },
-                                    "exhibition_status": {
-                                        "type": "string",
-                                        "enum": [
-                                            "scheduled",
-                                            "exhibited",
-                                            "ended"
-                                        ]
-                                    },
-                                    "exhibition_phone": {
-                                        "type": "string"
-                                    },
-                                    "exhibition_homepage": {
-                                        "type": "string"
-                                    },
-                                    "exhibition_poster_file": {
-                                        "description": "새로 업로드할 포스터 파일",
-                                        "type": "string",
-                                        "format": "binary"
-                                    },
-                                    "exhibition_poster_url": {
-                                        "description": "포스터 URL을 직접 지정할 때",
-                                        "type": "string"
-                                    }
-                                },
-                                "type": "object"
-                            }
-                        },
-                        "application/json": {
-                            "schema": {
-                                "properties": {
-                                    "exhibition_title": {
-                                        "type": "string"
-                                    },
-                                    "exhibition_category": {
-                                        "type": "string"
-                                    },
-                                    "exhibition_start_date": {
-                                        "type": "string",
-                                        "format": "date"
-                                    },
-                                    "exhibition_end_date": {
-                                        "type": "string",
-                                        "format": "date"
-                                    },
-                                    "exhibition_start_time": {
-                                        "type": "string",
-                                        "format": "time"
-                                    },
-                                    "exhibition_end_time": {
-                                        "type": "string",
-                                        "format": "time"
-                                    },
-                                    "exhibition_location": {
-                                        "type": "string"
-                                    },
-                                    "exhibition_price": {
-                                        "type": "integer"
-                                    },
-                                    "exhibition_tag": {
-                                        "type": "string"
-                                    },
-                                    "exhibition_status": {
-                                        "type": "string",
-                                        "enum": [
-                                            "scheduled",
-                                            "exhibited",
-                                            "ended"
-                                        ]
-                                    },
-                                    "exhibition_phone": {
-                                        "type": "string"
-                                    },
-                                    "exhibition_homepage": {
-                                        "type": "string"
-                                    },
-                                    "exhibition_poster_url": {
-                                        "description": "포스터 URL을 직접 지정할 때",
-                                        "type": "string"
-                                    }
-                                },
-                                "type": "object"
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "200": {
-                        "description": "수정 성공"
-                    },
-                    "403": {
-                        "description": "권한 없음"
-                    },
-                    "404": {
-                        "description": "전시회 없음"
                     }
                 },
                 "security": [
@@ -2209,6 +2266,158 @@
                     }
                 ]
             },
+            "post": {
+                "tags": [
+                    "Gallery"
+                ],
+                "summary": "[PATCH with method spoofing] 갤러리 일부 수정 (multipart 또는 JSON)",
+                "description": "[매우중요] multipart/form-data로 파일과 함께 요청 시, 실제로는 POST 메서드를 사용하고 본문에 `_method=PATCH` 필드를 포함해야 합니다. (Method Spoofing)",
+                "operationId": "93389add9029714ba6e948a68f03f8de",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "description": "수정할 필드만 포함하여 전송합니다. (부분 업데이트)",
+                    "required": true,
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "properties": {
+                                    "_method": {
+                                        "description": "Method Spoofing을 위해 'PATCH' 값을 전송해야 합니다.",
+                                        "type": "string",
+                                        "enum": [
+                                            "PATCH"
+                                        ],
+                                        "example": "PATCH"
+                                    },
+                                    "gallery_name": {
+                                        "description": "갤러리 이름",
+                                        "type": "string",
+                                        "nullable": true
+                                    },
+                                    "gallery_address": {
+                                        "description": "갤러리 주소",
+                                        "type": "string",
+                                        "nullable": true
+                                    },
+                                    "gallery_start_time": {
+                                        "description": "오픈 시간",
+                                        "type": "string",
+                                        "example": "10:00",
+                                        "nullable": true
+                                    },
+                                    "gallery_end_time": {
+                                        "description": "마감 시간",
+                                        "type": "string",
+                                        "example": "19:00",
+                                        "nullable": true
+                                    },
+                                    "gallery_closed_day": {
+                                        "description": "휴관일",
+                                        "type": "string",
+                                        "nullable": true
+                                    },
+                                    "gallery_category": {
+                                        "description": "갤러리 카테고리",
+                                        "type": "string",
+                                        "nullable": true
+                                    },
+                                    "gallery_description": {
+                                        "description": "갤러리 설명",
+                                        "type": "string",
+                                        "nullable": true
+                                    },
+                                    "gallery_latitude": {
+                                        "description": "위도",
+                                        "type": "number",
+                                        "format": "float",
+                                        "nullable": true
+                                    },
+                                    "gallery_longitude": {
+                                        "description": "경도",
+                                        "type": "number",
+                                        "format": "float",
+                                        "nullable": true
+                                    },
+                                    "gallery_phone": {
+                                        "description": "전화번호",
+                                        "type": "string",
+                                        "nullable": true
+                                    },
+                                    "gallery_email": {
+                                        "description": "이메일",
+                                        "type": "string",
+                                        "nullable": true
+                                    },
+                                    "gallery_homepage": {
+                                        "description": "홈페이지 URL",
+                                        "type": "string",
+                                        "nullable": true
+                                    },
+                                    "gallery_sns": {
+                                        "description": "SNS 링크 (JSON 배열 문자열)",
+                                        "type": "string",
+                                        "nullable": true
+                                    },
+                                    "gallery_image_file": {
+                                        "description": "새로 업로드할 이미지 파일",
+                                        "type": "string",
+                                        "format": "binary",
+                                        "nullable": true
+                                    },
+                                    "gallery_image_url": {
+                                        "description": "이미지 URL을 직접 지정할 때 (파일 업로드와 동시 사용 불가)",
+                                        "type": "string",
+                                        "nullable": true
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        },
+                        "application/json": {
+                            "schema": {
+                                "properties": {
+                                    "gallery_name": {
+                                        "type": "string",
+                                        "nullable": true
+                                    },
+                                    "gallery_address": {
+                                        "type": "string",
+                                        "nullable": true
+                                    },
+                                    "gallery_start_time": {
+                                        "type": "string",
+                                        "example": "10:00",
+                                        "nullable": true
+                                    },
+                                    "gallery_image_url": {
+                                        "description": "이미지 URL을 직접 지정할 때",
+                                        "type": "string",
+                                        "nullable": true
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "갤러리 수정 완료"
+                    },
+                    "404": {
+                        "description": "갤러리를 찾을 수 없음"
+                    }
+                }
+            },
             "delete": {
                 "tags": [
                     "Gallery"
@@ -2228,162 +2437,6 @@
                 "responses": {
                     "200": {
                         "description": "갤러리 삭제 완료"
-                    }
-                }
-            },
-            "patch": {
-                "tags": [
-                    "Gallery"
-                ],
-                "summary": "갤러리 일부 수정 (multipart 또는 JSON)",
-                "description": "갤러리 정보의 일부만 수정합니다.",
-                "operationId": "c8df208c1c32e63a9a227c585c289de1",
-                "parameters": [
-                    {
-                        "name": "id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "integer"
-                        }
-                    }
-                ],
-                "requestBody": {
-                    "description": "수정할 필드만 포함하여 전송합니다. (부분 업데이트)",
-                    "required": true,
-                    "content": {
-                        "multipart/form-data": {
-                            "schema": {
-                                "properties": {
-                                    "gallery_name": {
-                                        "description": "갤러리 이름",
-                                        "type": "string"
-                                    },
-                                    "gallery_address": {
-                                        "description": "갤러리 주소",
-                                        "type": "string"
-                                    },
-                                    "gallery_start_time": {
-                                        "description": "오픈 시간",
-                                        "type": "string",
-                                        "example": "10:00"
-                                    },
-                                    "gallery_end_time": {
-                                        "description": "마감 시간",
-                                        "type": "string",
-                                        "example": "19:00"
-                                    },
-                                    "gallery_closed_day": {
-                                        "description": "휴관일",
-                                        "type": "string"
-                                    },
-                                    "gallery_category": {
-                                        "description": "갤러리 카테고리",
-                                        "type": "string"
-                                    },
-                                    "gallery_description": {
-                                        "description": "갤러리 설명",
-                                        "type": "string"
-                                    },
-                                    "gallery_latitude": {
-                                        "description": "위도",
-                                        "type": "number",
-                                        "format": "float"
-                                    },
-                                    "gallery_longitude": {
-                                        "description": "경도",
-                                        "type": "number",
-                                        "format": "float"
-                                    },
-                                    "gallery_phone": {
-                                        "description": "전화번호",
-                                        "type": "string"
-                                    },
-                                    "gallery_email": {
-                                        "description": "이메일",
-                                        "type": "string"
-                                    },
-                                    "gallery_homepage": {
-                                        "description": "홈페이지 URL",
-                                        "type": "string"
-                                    },
-                                    "gallery_sns": {
-                                        "description": "SNS 링크 (JSON 배열 문자열)",
-                                        "type": "string"
-                                    },
-                                    "gallery_image_file": {
-                                        "description": "새로 업로드할 이미지 파일",
-                                        "type": "string",
-                                        "format": "binary"
-                                    },
-                                    "gallery_image_url": {
-                                        "description": "이미지 URL을 직접 지정할 때 (파일 업로드와 동시 사용 불가)",
-                                        "type": "string"
-                                    }
-                                },
-                                "type": "object"
-                            }
-                        },
-                        "application/json": {
-                            "schema": {
-                                "properties": {
-                                    "gallery_name": {
-                                        "type": "string"
-                                    },
-                                    "gallery_address": {
-                                        "type": "string"
-                                    },
-                                    "gallery_start_time": {
-                                        "type": "string",
-                                        "example": "10:00"
-                                    },
-                                    "gallery_end_time": {
-                                        "type": "string",
-                                        "example": "19:00"
-                                    },
-                                    "gallery_closed_day": {
-                                        "type": "string"
-                                    },
-                                    "gallery_category": {
-                                        "type": "string"
-                                    },
-                                    "gallery_description": {
-                                        "type": "string"
-                                    },
-                                    "gallery_latitude": {
-                                        "type": "number",
-                                        "format": "float"
-                                    },
-                                    "gallery_longitude": {
-                                        "type": "number",
-                                        "format": "float"
-                                    },
-                                    "gallery_phone": {
-                                        "type": "string"
-                                    },
-                                    "gallery_email": {
-                                        "type": "string"
-                                    },
-                                    "gallery_homepage": {
-                                        "type": "string"
-                                    },
-                                    "gallery_sns": {
-                                        "description": "JSON 배열 문자열",
-                                        "type": "string"
-                                    },
-                                    "gallery_image_url": {
-                                        "description": "이미지 URL을 직접 지정할 때",
-                                        "type": "string"
-                                    }
-                                },
-                                "type": "object"
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "200": {
-                        "description": "갤러리 수정 완료"
                     }
                 }
             }

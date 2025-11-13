@@ -171,12 +171,12 @@ class GalleryController {
     }
 
     /**
-     * @OA\Patch(
+     * @OA\Post(
      * path="/api/galleries/{id}",
-     * summary="갤러리 일부 수정 (multipart 또는 JSON)",
-     * description="갤러리 정보의 일부만 수정합니다.",
+     * summary="[PATCH with method spoofing] 갤러리 일부 수정 (multipart 또는 JSON)",
      * tags={"Gallery"},
      * @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+     * description="[매우중요] multipart/form-data로 파일과 함께 요청 시, 실제로는 POST 메서드를 사용하고 본문에 `_method=PATCH` 필드를 포함해야 합니다. (Method Spoofing)",
      * @OA\RequestBody(
      * required=true,
      * description="수정할 필드만 포함하여 전송합니다. (부분 업데이트)",
@@ -184,45 +184,43 @@ class GalleryController {
      * mediaType="multipart/form-data",
      * @OA\Schema(
      * type="object",
-     * @OA\Property(property="gallery_name", type="string", description="갤러리 이름"),
-     * @OA\Property(property="gallery_address", type="string", description="갤러리 주소"),
-     * @OA\Property(property="gallery_start_time", type="string", example="10:00", description="오픈 시간"),
-     * @OA\Property(property="gallery_end_time", type="string", example="19:00", description="마감 시간"),
-     * @OA\Property(property="gallery_closed_day", type="string", description="휴관일"),
-     * @OA\Property(property="gallery_category", type="string", description="갤러리 카테고리"),
-     * @OA\Property(property="gallery_description", type="string", description="갤러리 설명"),
-     * @OA\Property(property="gallery_latitude", type="number", format="float", description="위도"),
-     * @OA\Property(property="gallery_longitude", type="number", format="float", description="경도"),
-     * @OA\Property(property="gallery_phone", type="string", description="전화번호"),
-     * @OA\Property(property="gallery_email", type="string", description="이메일"),
-     * @OA\Property(property="gallery_homepage", type="string", description="홈페이지 URL"),
-     * @OA\Property(property="gallery_sns", type="string", description="SNS 링크 (JSON 배열 문자열)"),
-     * @OA\Property(property="gallery_image_file", type="string", format="binary", description="새로 업로드할 이미지 파일"),
-     * @OA\Property(property="gallery_image_url", type="string", description="이미지 URL을 직접 지정할 때 (파일 업로드와 동시 사용 불가)")
+     * @OA\Property(
+     * property="_method", 
+     * type="string", 
+     * enum={"PATCH"}, 
+     * example="PATCH", 
+     * description="Method Spoofing을 위해 'PATCH' 값을 전송해야 합니다."
+     * ),
+     * @OA\Property(property="gallery_name", type="string", description="갤러리 이름", nullable=true),
+     * @OA\Property(property="gallery_address", type="string", description="갤러리 주소", nullable=true),
+     * @OA\Property(property="gallery_start_time", type="string", example="10:00", description="오픈 시간", nullable=true),
+     * @OA\Property(property="gallery_end_time", type="string", example="19:00", description="마감 시간", nullable=true),
+     * @OA\Property(property="gallery_closed_day", type="string", description="휴관일", nullable=true),
+     * @OA\Property(property="gallery_category", type="string", description="갤러리 카테고리", nullable=true),
+     * @OA\Property(property="gallery_description", type="string", description="갤러리 설명", nullable=true),
+     * @OA\Property(property="gallery_latitude", type="number", format="float", description="위도", nullable=true),
+     * @OA\Property(property="gallery_longitude", type="number", format="float", description="경도", nullable=true),
+     * @OA\Property(property="gallery_phone", type="string", description="전화번호", nullable=true),
+     * @OA\Property(property="gallery_email", type="string", description="이메일", nullable=true),
+     * @OA\Property(property="gallery_homepage", type="string", description="홈페이지 URL", nullable=true),
+     * @OA\Property(property="gallery_sns", type="string", description="SNS 링크 (JSON 배열 문자열)", nullable=true),
+     * @OA\Property(property="gallery_image_file", type="string", format="binary", description="새로 업로드할 이미지 파일", nullable=true),
+     * @OA\Property(property="gallery_image_url", type="string", description="이미지 URL을 직접 지정할 때 (파일 업로드와 동시 사용 불가)", nullable=true)
      * )
      * ),
      * @OA\MediaType(
      * mediaType="application/json",
      * @OA\Schema(
      * type="object",
-     * @OA\Property(property="gallery_name", type="string"),
-     * @OA\Property(property="gallery_address", type="string"),
-     * @OA\Property(property="gallery_start_time", type="string", example="10:00"),
-     * @OA\Property(property="gallery_end_time", type="string", example="19:00"),
-     * @OA\Property(property="gallery_closed_day", type="string"),
-     * @OA\Property(property="gallery_category", type="string"),
-     * @OA\Property(property="gallery_description", type="string"),
-     * @OA\Property(property="gallery_latitude", type="number", format="float"),
-     * @OA\Property(property="gallery_longitude", type="number", format="float"),
-     * @OA\Property(property="gallery_phone", type="string"),
-     * @OA\Property(property="gallery_email", type="string"),
-     * @OA\Property(property="gallery_homepage", type="string"),
-     * @OA\Property(property="gallery_sns", type="string", description="JSON 배열 문자열"),
-     * @OA\Property(property="gallery_image_url", type="string", description="이미지 URL을 직접 지정할 때")
+     * @OA\Property(property="gallery_name", type="string", nullable=true),
+     * @OA\Property(property="gallery_address", type="string", nullable=true),
+     * @OA\Property(property="gallery_start_time", type="string", example="10:00", nullable=true),
+     * @OA\Property(property="gallery_image_url", type="string", description="이미지 URL을 직접 지정할 때", nullable=true)
      * )
      * )
      * ),
-     * @OA\Response(response=200, description="갤러리 수정 완료")
+     * @OA\Response(response=200, description="갤러리 수정 완료"),
+     * @OA\Response(response=404, description="갤러리를 찾을 수 없음")
      * )
      */
     public function updateGallery($id) { 
@@ -237,43 +235,43 @@ class GalleryController {
 
         if ($isMultipart) {
             // isset()으로 체크하여 '존재하는 값만' $data에 추가
-            if (isset($_POST['gallery_name'])) {
+            if (isset($_POST['gallery_name']) && $_POST['gallery_name'] !== '') {
                 $data['gallery_name'] = $_POST['gallery_name'];
             }
-            if (isset($_POST['gallery_address'])) {
+            if (isset($_POST['gallery_address']) && $_POST['gallery_address'] !== '') {
                 $data['gallery_address'] = $_POST['gallery_address'];
             }
-            if (isset($_POST['gallery_start_time'])) {
+            if (isset($_POST['gallery_start_time']) && $_POST['gallery_start_time'] !== '') {
                 $data['gallery_start_time'] = $_POST['gallery_start_time'];
             }
-            if (isset($_POST['gallery_end_time'])) {
+            if (isset($_POST['gallery_end_time']) && $_POST['gallery_end_time'] !== '') {
                 $data['gallery_end_time'] = $_POST['gallery_end_time'];
             }
-            if (isset($_POST['gallery_closed_day'])) {
+            if (isset($_POST['gallery_closed_day']) && $_POST['gallery_closed_day'] !== '') {
                 $data['gallery_closed_day'] = $_POST['gallery_closed_day'];
             }
-            if (isset($_POST['gallery_category'])) {
+            if (isset($_POST['gallery_category']) && $_POST['gallery_category'] !== '') {
                 $data['gallery_category'] = $_POST['gallery_category'];
             }
-            if (isset($_POST['gallery_description'])) {
+            if (isset($_POST['gallery_description']) && $_POST['gallery_description'] !== '') {
                 $data['gallery_description'] = $_POST['gallery_description'];
             }
-            if (isset($_POST['gallery_latitude'])) {
+            if (isset($_POST['gallery_latitude']) && $_POST['gallery_latitude'] !== '') {
                 $data['gallery_latitude'] = $_POST['gallery_latitude'];
             }
-            if (isset($_POST['gallery_longitude'])) {
+            if (isset($_POST['gallery_longitude']) && $_POST['gallery_longitude'] !== '') {
                 $data['gallery_longitude'] = $_POST['gallery_longitude'];
             }
-            if (isset($_POST['gallery_phone'])) {
+            if (isset($_POST['gallery_phone']) && $_POST['gallery_phone'] !== '') {
                 $data['gallery_phone'] = $_POST['gallery_phone'];
             }
-            if (isset($_POST['gallery_email'])) {
+            if (isset($_POST['gallery_email']) && $_POST['gallery_email'] !== '') {
                 $data['gallery_email'] = $_POST['gallery_email'];
             }
-            if (isset($_POST['gallery_homepage'])) {
+            if (isset($_POST['gallery_homepage']) && $_POST['gallery_homepage'] !== '') {
                 $data['gallery_homepage'] = $_POST['gallery_homepage'];
             }
-            if (isset($_POST['gallery_sns'])) {
+            if (isset($_POST['gallery_sns']) && $_POST['gallery_sns'] !== '') {
                 $data['gallery_sns'] = $_POST['gallery_sns'];
             }
             

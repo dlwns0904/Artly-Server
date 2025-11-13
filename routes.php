@@ -33,6 +33,12 @@ use Controllers\InvitationGenerateConsoleController;
 $requestMethod  = $_SERVER['REQUEST_METHOD'];
 $requestUri     = '/api/' . ($_GET['path'] ?? '');
 
+// Method Spoofing (일반 PATCH는 multipart/form-data와 불안정한 조합이므로)
+//    POST 요청이고, _method 필드가 있으면, $method를 덮어쓴다.
+if ($requestMethod === 'POST' && isset($_POST['_method'])) {
+    $requestMethod = strtoupper($_POST['_method']); // $method 변수가 'PATCH'로 변경됨
+}
+
 
 /* ───────────────────────── Artist ───────────────────────── */
 

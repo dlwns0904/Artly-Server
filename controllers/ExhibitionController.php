@@ -288,13 +288,13 @@ class ExhibitionController {
 
 
     /**
-     * @OA\Patch(
+     * @OA\Post(
      * path="/api/exhibitions/{id}",
-     * summary="전시회 일부 수정 (multipart 또는 JSON)",
-     * description="전시회 정보의 일부만 수정합니다.",
+     * summary="[PATCH with method spoofing] 전시회 일부 수정 (multipart 또는 JSON)",
      * tags={"Exhibition"},
      * security={{"bearerAuth":{}}},
      * @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+     * description="[매우중요] multipart/form-data로 파일과 함께 요청 시, 실제로는 POST 메서드를 사용하고 본문에 `_method=PATCH` 필드를 포함해야 합니다. (Method Spoofing)",
      * @OA\RequestBody(
      * required=true,
      * description="수정할 필드만 포함하여 전송합니다. (부분 업데이트)",
@@ -302,39 +302,47 @@ class ExhibitionController {
      * mediaType="multipart/form-data",
      * @OA\Schema(
      * type="object",
-     * @OA\Property(property="exhibition_title", type="string"),
-     * @OA\Property(property="exhibition_category", type="string"),
-     * @OA\Property(property="exhibition_start_date", type="string", format="date"),
-     * @OA\Property(property="exhibition_end_date", type="string", format="date"),
-     * @OA\Property(property="exhibition_start_time", type="string", format="time"),
-     * @OA\Property(property="exhibition_end_time", type="string", format="time"),
-     * @OA\Property(property="exhibition_location", type="string"),
-     * @OA\Property(property="exhibition_price", type="integer"),
-     * @OA\Property(property="exhibition_tag", type="string"),
-     * @OA\Property(property="exhibition_status", type="string", enum={"scheduled","exhibited","ended"}),
-     * @OA\Property(property="exhibition_phone", type="string"),
-     * @OA\Property(property="exhibition_homepage", type="string"),
-     * @OA\Property(property="exhibition_poster_file", type="string", format="binary", description="새로 업로드할 포스터 파일"),
-     * @OA\Property(property="exhibition_poster_url", type="string", description="포스터 URL을 직접 지정할 때")
+     * required={"_method"},
+     * @OA\Property(
+     * property="_method", 
+     * type="string", 
+     * enum={"PATCH"}, 
+     * example="PATCH", 
+     * description="Method Spoofing을 위해 'PATCH' 값을 전송해야 합니다."
+     * ),
+     * @OA\Property(property="exhibition_title", type="string", nullable=true),
+     * @OA\Property(property="exhibition_category", type="string", nullable=true),
+     * @OA\Property(property="exhibition_start_date", type="string", format="date", nullable=true),
+     * @OA\Property(property="exhibition_end_date", type="string", format="date", nullable=true),
+     * @OA\Property(property="exhibition_start_time", type="string", format="time", nullable=true),
+     * @OA\Property(property="exhibition_end_time", type="string", format="time", nullable=true),
+     * @OA\Property(property="exhibition_location", type="string", nullable=true),
+     * @OA\Property(property="exhibition_price", type="integer", nullable=true),
+     * @OA\Property(property="exhibition_tag", type="string", nullable=true),
+     * @OA\Property(property="exhibition_status", type="string", enum={"scheduled","exhibited","ended"}, nullable=true),
+     * @OA\Property(property="exhibition_phone", type="string", nullable=true),
+     * @OA\Property(property="exhibition_homepage", type="string", nullable=true),
+     * @OA\Property(property="exhibition_poster_file", type="string", format="binary", description="새로 업로드할 포스터 파일", nullable=true),
+     * @OA\Property(property="exhibition_poster_url", type="string", description="포스터 URL을 직접 지정할 때", nullable=true)
      * )
      * ),
      * @OA\MediaType(
      * mediaType="application/json",
      * @OA\Schema(
      * type="object",
-     * @OA\Property(property="exhibition_title", type="string"),
-     * @OA\Property(property="exhibition_category", type="string"),
-     * @OA\Property(property="exhibition_start_date", type="string", format="date"),
-     * @OA\Property(property="exhibition_end_date", type="string", format="date"),
-     * @OA\Property(property="exhibition_start_time", type="string", format="time"),
-     * @OA\Property(property="exhibition_end_time", type="string", format="time"),
-     * @OA\Property(property="exhibition_location", type="string"),
-     * @OA\Property(property="exhibition_price", type="integer"),
-     * @OA\Property(property="exhibition_tag", type="string"),
-     * @OA\Property(property="exhibition_status", type="string", enum={"scheduled","exhibited","ended"}),
-     * @OA\Property(property="exhibition_phone", type="string"),
-     * @OA\Property(property="exhibition_homepage", type="string"),
-     * @OA\Property(property="exhibition_poster_url", type="string", description="포스터 URL을 직접 지정할 때")
+     * @OA\Property(property="exhibition_title", type="string", nullable=true),
+     * @OA\Property(property="exhibition_category", type="string", nullable=true),
+     * @OA\Property(property="exhibition_start_date", type="string", format="date", nullable=true),
+     * @OA\Property(property="exhibition_end_date", type="string", format="date", nullable=true),
+     * @OA\Property(property="exhibition_start_time", type="string", format="time", nullable=true),
+     * @OA\Property(property="exhibition_end_time", type="string", format="time", nullable=true),
+     * @OA\Property(property="exhibition_location", type="string", nullable=true),
+     * @OA\Property(property="exhibition_price", type="integer", nullable=true),
+     * @OA\Property(property="exhibition_tag", type="string", nullable=true),
+     * @OA\Property(property="exhibition_status", type="string", enum={"scheduled","exhibited","ended"}, nullable=true),
+     * @OA\Property(property="exhibition_phone", type="string", nullable=true),
+     * @OA\Property(property="exhibition_homepage", type="string", nullable=true),
+     * @OA\Property(property="exhibition_poster_url", type="string", description="포스터 URL을 직접 지정할 때", nullable=true)
      * )
      * )
      * ),
@@ -367,53 +375,52 @@ class ExhibitionController {
         $data = []; 
 
         if ($isMultipart) {
-            // 'isset()'으로 존재하는 값만 $data에 추가
-            if (isset($_POST['exhibition_title'])) {
+            if (isset($_POST['exhibition_title']) && $_POST['exhibition_title'] !== '') {
                 $data['exhibition_title'] = $_POST['exhibition_title'];
             }
-            if (isset($_POST['exhibition_category'])) {
+            if (isset($_POST['exhibition_category']) && $_POST['exhibition_category'] !== '') {
                 $data['exhibition_category'] = $_POST['exhibition_category'];
             }
-            if (isset($_POST['exhibition_start_date'])) {
+            if (isset($_POST['exhibition_start_date']) && $_POST['exhibition_start_date'] !== '') {
                 $data['exhibition_start_date'] = $_POST['exhibition_start_date'];
             }
-            if (isset($_POST['exhibition_end_date'])) {
+            if (isset($_POST['exhibition_end_date']) && $_POST['exhibition_end_date'] !== '') {
                 $data['exhibition_end_date'] = $_POST['exhibition_end_date'];
             }
-            if (isset($_POST['exhibition_start_time'])) {
+            if (isset($_POST['exhibition_start_time']) && $_POST['exhibition_start_time'] !== '') {
                 $data['exhibition_start_time'] = $_POST['exhibition_start_time'];
             }
-            if (isset($_POST['exhibition_end_time'])) {
+            if (isset($_POST['exhibition_end_time']) && $_POST['exhibition_end_time'] !== '') {
                 $data['exhibition_end_time'] = $_POST['exhibition_end_time'];
             }
-            if (isset($_POST['exhibition_location'])) {
+            if (isset($_POST['exhibition_location']) && $_POST['exhibition_location'] !== '') {
                 $data['exhibition_location'] = $_POST['exhibition_location'];
             }
-            if (isset($_POST['exhibition_price'])) {
+            if (isset($_POST['exhibition_price']) && $_POST['exhibition_price'] !== '') {
                 $data['exhibition_price'] = $_POST['exhibition_price'];
             }
-            if (isset($_POST['exhibition_tag'])) {
+            if (isset($_POST['exhibition_tag']) && $_POST['exhibition_tag'] !== '') {
                 $data['exhibition_tag'] = $_POST['exhibition_tag'];
             }
-            if (isset($_POST['exhibition_status'])) {
+            if (isset($_POST['exhibition_status']) && $_POST['exhibition_status'] !== '') {
                 $data['exhibition_status'] = $_POST['exhibition_status'];
             }
-            if (isset($_POST['exhibition_phone'])) {
+            if (isset($_POST['exhibition_phone']) && $_POST['exhibition_phone'] !== '') {
                 $data['exhibition_phone'] = $_POST['exhibition_phone'];
             }
-            if (isset($_POST['exhibition_homepage'])) {
+            if (isset($_POST['exhibition_homepage']) && $_POST['exhibition_homepage'] !== '') {
                 $data['exhibition_homepage'] = $_POST['exhibition_homepage'];
             }
 
-            // 파일 처리 로직
+            // 파일 처리 로직 (URL은 빈 문자열을 null로 처리)
             if (!empty($_FILES['exhibition_poster_file']) && $_FILES['exhibition_poster_file']['error'] === UPLOAD_ERR_OK) {
                 $relPath = $this->saveUploadedImage($_FILES['exhibition_poster_file'], 'exhibition');
                 $data['exhibition_poster'] = $relPath;
-            } elseif (isset($_POST['exhibition_poster_url'])) {
+            } elseif (isset($_POST['exhibition_poster_url'])) { // URL은 빈 문자열을 'null'로 처리
                 $data['exhibition_poster'] = $_POST['exhibition_poster_url'] ?: null;
             }
         } else {
-            // JSON 방식은 이미 PATCH처럼 동작 (보내준 필드만 포함)
+            // JSON 방식 (수정 불필요)
             $jsonData = json_decode(file_get_contents('php://input'), true) ?? [];
             $data = array_merge($data, $jsonData);
         }
@@ -435,7 +442,6 @@ class ExhibitionController {
             }
             echo json_encode(['message' => 'Exhibition updated successfully', 'data' => $updatedExhibition], JSON_UNESCAPED_UNICODE);
         } else {
-            // 이 구문은 $this->model->update가 0 (변경된 행 없음)을 반환할 때 도달할 수 있음
             http_response_code(500);
             echo json_encode(['message' => 'Exhibition update failed']);
         }
