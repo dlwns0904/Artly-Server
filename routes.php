@@ -63,7 +63,7 @@ elseif ($requestMethod === 'GET' && preg_match('#^/api/exhibitions$#', $requestU
 elseif ($requestMethod === 'POST' && $requestUri === '/api/exhibitions') {
     (new ExhibitionController())->createExhibition();
 }
-elseif ($requestMethod === 'PUT' && preg_match('#^/api/exhibitions/(\d+)$#', $requestUri, $m)) {
+elseif ($requestMethod === 'PATCH' && preg_match('#^/api/exhibitions/(\d+)$#', $requestUri, $m)) {
     (new ExhibitionController())->updateExhibition($m[1]);
 }
 elseif ($requestMethod === 'DELETE' && preg_match('#^/api/exhibitions/(\d+)$#', $requestUri, $m)) {
@@ -89,7 +89,7 @@ elseif ($requestMethod === 'GET' && preg_match('#^/api/arts$#', $requestUri)) {
 elseif ($requestMethod === 'POST' && $requestUri === '/api/arts') {
     (new ArtController())->createArt();
 }
-elseif ($requestMethod === 'PUT' && preg_match('#^/api/arts/(\d+)$#', $requestUri, $m)) {
+elseif ($requestMethod === 'PATCH' && preg_match('#^/api/arts/(\d+)$#', $requestUri, $m)) {
     (new ArtController())->updateArt($m[1]);
 }
 elseif ($requestMethod === 'DELETE' && preg_match('#^/api/arts/(\d+)$#', $requestUri, $m)) {
@@ -108,7 +108,7 @@ elseif ($requestMethod === 'GET' && preg_match('#^/api/galleries$#', $requestUri
 elseif ($requestMethod === 'POST' && $requestUri === '/api/galleries') {
     (new GalleryController())->createGallery();
 }
-elseif ($requestMethod === 'PUT' && preg_match('#^/api/galleries/(\d+)$#', $requestUri, $m)) {
+elseif ($requestMethod === 'PATCH' && preg_match('#^/api/galleries/(\d+)$#', $requestUri, $m)) {
     (new GalleryController())->updateGallery($m[1]);
 }
 elseif ($requestMethod === 'DELETE' && preg_match('#^/api/galleries/(\d+)$#', $requestUri, $m)) {

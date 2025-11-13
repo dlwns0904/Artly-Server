@@ -171,78 +171,133 @@ class GalleryController {
     }
 
     /**
-     * @OA\Put(
-     *     path="/api/galleries/{id}",
-     *     summary="갤러리 수정 (multipart 또는 JSON)",
-     *     tags={"Gallery"},
-     *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
-     *     @OA\RequestBody(
-     *         required=true,
-     *         @OA\MediaType(
-     *           mediaType="multipart/form-data",
-     *           @OA\Schema(
-     *             type="object",
-     *             @OA\Property(property="gallery_name", type="string"),
-     *             @OA\Property(property="gallery_address", type="string"),
-     *             @OA\Property(property="gallery_start_time", type="string", example="10:00"),
-     *             @OA\Property(property="gallery_end_time", type="string", example="19:00"),
-     *             @OA\Property(property="gallery_closed_day", type="string"),
-     *             @OA\Property(property="gallery_category", type="string"),
-     *             @OA\Property(property="gallery_description", type="string"),
-     *             @OA\Property(property="gallery_latitude", type="number", format="float"),
-     *             @OA\Property(property="gallery_longitude", type="number", format="float"),
-     *             @OA\Property(property="gallery_phone", type="string"),
-     *             @OA\Property(property="gallery_email", type="string"),
-     *             @OA\Property(property="gallery_homepage", type="string"),
-     *             @OA\Property(property="gallery_sns", type="string", description="JSON 배열 문자열"),
-     *             @OA\Property(property="gallery_image_file", type="string", format="binary"),
-     *             @OA\Property(property="gallery_image_url", type="string", description="이미지 URL을 그대로 저장하고 싶을 때")
-     *           )
-     *         )
-     *     ),
-     *     @OA\Response(response=200, description="갤러리 수정 완료")
+     * @OA\Patch(
+     * path="/api/galleries/{id}",
+     * summary="갤러리 일부 수정 (multipart 또는 JSON)",
+     * description="갤러리 정보의 일부만 수정합니다.",
+     * tags={"Gallery"},
+     * @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+     * @OA\RequestBody(
+     * required=true,
+     * description="수정할 필드만 포함하여 전송합니다. (부분 업데이트)",
+     * @OA\MediaType(
+     * mediaType="multipart/form-data",
+     * @OA\Schema(
+     * type="object",
+     * @OA\Property(property="gallery_name", type="string", description="갤러리 이름"),
+     * @OA\Property(property="gallery_address", type="string", description="갤러리 주소"),
+     * @OA\Property(property="gallery_start_time", type="string", example="10:00", description="오픈 시간"),
+     * @OA\Property(property="gallery_end_time", type="string", example="19:00", description="마감 시간"),
+     * @OA\Property(property="gallery_closed_day", type="string", description="휴관일"),
+     * @OA\Property(property="gallery_category", type="string", description="갤러리 카테고리"),
+     * @OA\Property(property="gallery_description", type="string", description="갤러리 설명"),
+     * @OA\Property(property="gallery_latitude", type="number", format="float", description="위도"),
+     * @OA\Property(property="gallery_longitude", type="number", format="float", description="경도"),
+     * @OA\Property(property="gallery_phone", type="string", description="전화번호"),
+     * @OA\Property(property="gallery_email", type="string", description="이메일"),
+     * @OA\Property(property="gallery_homepage", type="string", description="홈페이지 URL"),
+     * @OA\Property(property="gallery_sns", type="string", description="SNS 링크 (JSON 배열 문자열)"),
+     * @OA\Property(property="gallery_image_file", type="string", format="binary", description="새로 업로드할 이미지 파일"),
+     * @OA\Property(property="gallery_image_url", type="string", description="이미지 URL을 직접 지정할 때 (파일 업로드와 동시 사용 불가)")
+     * )
+     * ),
+     * @OA\MediaType(
+     * mediaType="application/json",
+     * @OA\Schema(
+     * type="object",
+     * @OA\Property(property="gallery_name", type="string"),
+     * @OA\Property(property="gallery_address", type="string"),
+     * @OA\Property(property="gallery_start_time", type="string", example="10:00"),
+     * @OA\Property(property="gallery_end_time", type="string", example="19:00"),
+     * @OA\Property(property="gallery_closed_day", type="string"),
+     * @OA\Property(property="gallery_category", type="string"),
+     * @OA\Property(property="gallery_description", type="string"),
+     * @OA\Property(property="gallery_latitude", type="number", format="float"),
+     * @OA\Property(property="gallery_longitude", type="number", format="float"),
+     * @OA\Property(property="gallery_phone", type="string"),
+     * @OA\Property(property="gallery_email", type="string"),
+     * @OA\Property(property="gallery_homepage", type="string"),
+     * @OA\Property(property="gallery_sns", type="string", description="JSON 배열 문자열"),
+     * @OA\Property(property="gallery_image_url", type="string", description="이미지 URL을 직접 지정할 때")
+     * )
+     * )
+     * ),
+     * @OA\Response(response=200, description="갤러리 수정 완료")
      * )
      */
-    public function updateGallery($id) {
+    public function updateGallery($id) { 
         $decoded = $this->auth->decodeToken();
         $userId  = $decoded && isset($decoded->user_id) ? $decoded->user_id : null;
 
         $isMultipart = isset($_SERVER['CONTENT_TYPE']) && stripos($_SERVER['CONTENT_TYPE'], 'multipart/form-data') !== false;
 
-        if ($isMultipart) {
-            $data = [
-                'gallery_name'       => $_POST['gallery_name']       ?? null,
-                'gallery_address'    => $_POST['gallery_address']    ?? null,
-                'gallery_start_time' => $_POST['gallery_start_time'] ?? null,
-                'gallery_end_time'   => $_POST['gallery_end_time']   ?? null,
-                'gallery_closed_day' => $_POST['gallery_closed_day'] ?? null,
-                'gallery_category'   => $_POST['gallery_category']   ?? null,
-                'gallery_description'=> $_POST['gallery_description']?? null,
-                'gallery_latitude'   => $_POST['gallery_latitude']   ?? null,
-                'gallery_longitude'  => $_POST['gallery_longitude']  ?? null,
-                'gallery_phone'      => $_POST['gallery_phone']      ?? null,
-                'gallery_email'      => $_POST['gallery_email']      ?? null,
-                'gallery_homepage'   => $_POST['gallery_homepage']   ?? null,
-                'gallery_sns'        => $_POST['gallery_sns']        ?? null,
-                'user_id'            => $userId,
-            ];
+        // PATCH 로직을 위해 빈 배열로 시작
+        $data = []; 
+        $data['user_id'] = $userId; // user_id는 항상 포함
 
-            // 새 파일 업로드가 있으면 교체
+        if ($isMultipart) {
+            // isset()으로 체크하여 '존재하는 값만' $data에 추가
+            if (isset($_POST['gallery_name'])) {
+                $data['gallery_name'] = $_POST['gallery_name'];
+            }
+            if (isset($_POST['gallery_address'])) {
+                $data['gallery_address'] = $_POST['gallery_address'];
+            }
+            if (isset($_POST['gallery_start_time'])) {
+                $data['gallery_start_time'] = $_POST['gallery_start_time'];
+            }
+            if (isset($_POST['gallery_end_time'])) {
+                $data['gallery_end_time'] = $_POST['gallery_end_time'];
+            }
+            if (isset($_POST['gallery_closed_day'])) {
+                $data['gallery_closed_day'] = $_POST['gallery_closed_day'];
+            }
+            if (isset($_POST['gallery_category'])) {
+                $data['gallery_category'] = $_POST['gallery_category'];
+            }
+            if (isset($_POST['gallery_description'])) {
+                $data['gallery_description'] = $_POST['gallery_description'];
+            }
+            if (isset($_POST['gallery_latitude'])) {
+                $data['gallery_latitude'] = $_POST['gallery_latitude'];
+            }
+            if (isset($_POST['gallery_longitude'])) {
+                $data['gallery_longitude'] = $_POST['gallery_longitude'];
+            }
+            if (isset($_POST['gallery_phone'])) {
+                $data['gallery_phone'] = $_POST['gallery_phone'];
+            }
+            if (isset($_POST['gallery_email'])) {
+                $data['gallery_email'] = $_POST['gallery_email'];
+            }
+            if (isset($_POST['gallery_homepage'])) {
+                $data['gallery_homepage'] = $_POST['gallery_homepage'];
+            }
+            if (isset($_POST['gallery_sns'])) {
+                $data['gallery_sns'] = $_POST['gallery_sns'];
+            }
+            
+            // --- 파일 처리 로직 (이 부분은 PUT과 동일해도 됨) ---
             if (!empty($_FILES['gallery_image_file']) && $_FILES['gallery_image_file']['error'] === UPLOAD_ERR_OK) {
+                // 새 파일 업로드가 있으면 교체
                 $relPath = $this->saveUploadedImage($_FILES['gallery_image_file'], 'gallery');
                 $data['gallery_image'] = $relPath;
             } elseif (isset($_POST['gallery_image_url'])) {
-                // URL로 교체 요청이 있으면 반영
+                // URL로 교체 요청이 있으면 반영 (빈 문자열을 보내면 null로 업데이트 가능)
                 $data['gallery_image'] = $_POST['gallery_image_url'] ?: null;
             }
+            // --- 파일 처리 끝 ---
+
         } else {
-            $data = json_decode(file_get_contents("php://input"), true) ?? [];
-            $data['user_id'] = $userId;
+            // JSON 방식은 이미 PATCH처럼 동작
+            $jsonData = json_decode(file_get_contents("php://input"), true) ?? [];
+            $data = array_merge($data, $jsonData); // user_id와 JSON 데이터 병합
         }
 
+        // $data 배열에 '있는' 키만 업데이트하도록 구현
         $updated = $this->model->update($id, $data);
 
-        // 응답 시 절대 URL 변환
+        // --- 응답 로직 (동일) ---
         if (is_array($updated) && isset($updated['gallery_image'])) {
             $updated['gallery_image'] = $this->toAbsoluteUrl($updated['gallery_image']);
         }
