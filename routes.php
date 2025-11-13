@@ -89,7 +89,7 @@ elseif ($requestMethod === 'GET' && preg_match('#^/api/arts$#', $requestUri)) {
 elseif ($requestMethod === 'POST' && $requestUri === '/api/arts') {
     (new ArtController())->createArt();
 }
-elseif ($requestMethod === 'PUT' && preg_match('#^/api/arts/(\d+)$#', $requestUri, $m)) {
+elseif ($requestMethod === 'PATCH' && preg_match('#^/api/arts/(\d+)$#', $requestUri, $m)) {
     (new ArtController())->updateArt($m[1]);
 }
 elseif ($requestMethod === 'DELETE' && preg_match('#^/api/arts/(\d+)$#', $requestUri, $m)) {

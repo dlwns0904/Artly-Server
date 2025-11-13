@@ -266,31 +266,35 @@ class ArtController {
     }
 
     /**
-     * @OA\Put(
-     *   path="/api/arts/{id}",
-     *   summary="작품 수정 (multipart/form-data 업로드)",
-     *   tags={"Art"},
-     *   @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
-     *   @OA\RequestBody(
-     *     required=false,
-     *     @OA\MediaType(
-     *       mediaType="multipart/form-data",
-     *       @OA\Schema(
-     *         @OA\Property(property="image", type="string", format="binary", description="새 이미지(선택)"),
-     *         @OA\Property(property="artist_id", type="integer"),
-     *         @OA\Property(property="art_title", type="string"),
-     *         @OA\Property(property="art_description", type="string"),
-     *         @OA\Property(property="art_docent", type="string"),
-     *         @OA\Property(property="art_material", type="string"),
-     *         @OA\Property(property="art_size", type="string"),
-     *         @OA\Property(property="art_year", type="string")
-     *       )
-     *     )
-     *   ),
-     *   @OA\Response(response=200, description="Updated")
+     * @OA\Patch(
+     * path="/api/arts/{id}",
+     * summary="작품 일부 수정 (multipart/form-data 업로드)",
+     * description="작품 정보의 일부 필드만 수정합니다.",
+     * tags={"Art"},
+     * @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+     * @OA\RequestBody(
+     * required=true,
+     * description="수정할 필드만 전송합니다. (부분 업데이트)",
+     * @OA\MediaType(
+     * mediaType="multipart/form-data",
+     * @OA\Schema(
+     * @OA\Property(property="image", type="string", format="binary", description="새 이미지(선택)"),
+     * @OA\Property(property="artist_id", type="integer"),
+     * @OA\Property(property="art_title", type="string"),
+     * @OA\Property(property="art_description", type="string"),
+     * @OA\Property(property="art_docent", type="string"),
+     * @OA\Property(property="art_material", type="string"),
+     * @OA\Property(property="art_size", type="string"),
+     * @OA\Property(property="art_year", type="string")
+     * )
+     * )
+     * ),
+     * @OA\Response(response=200, description="Updated"),
+     * @OA\Response(response=404, description="Art not found")
      * )
      */
     public function updateArt($id) {
+        // (이 함수의 PHP 코드는 이미 PATCH 방식이므로 수정할 필요 없음)
         try {
             $exists = $this->model->getById($id);
             if (!$exists) {
