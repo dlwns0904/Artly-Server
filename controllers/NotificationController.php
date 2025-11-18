@@ -111,46 +111,55 @@ class NotificationController {
     /**
      * @OA\Post(
      * path="/api/notification/send",
-     * summary="관리자 알림 발송",
-     * description="관리자가 특정 유저 목록(userIds)에게 푸시 알림을 전송하고, 발송 이력을 DB에 저장합니다.",
+     * summary="푸시 알림 발송 (Firebase)",
+     * description="특정 사용자들에게 푸시 알림을 전송합니다. 인증 토큰 내의 정보를 이용해 발송자를 식별합니다.",
      * tags={"Notification"},
+     * security={{"bearerAuth":{}}}, 
      * @OA\RequestBody(
      * required=true,
      * description="알림 발송 정보",
      * @OA\JsonContent(
      * required={"userIds", "title", "message"},
-     * @OA\Property(property="creator_id", type="integer", description="작성자(관리자) ID", example=1),
      * @OA\Property(
      * property="userIds",
      * type="array",
-     * description="알림을 수신할 유저 ID 목록",
-     * @OA\Items(type="integer", example=101)
+     * description="수신자 ID 목록 (Array of Integers)",
+     * @OA\Items(type="integer"),
+     * example={10, 24, 35}
      * ),
-     * @OA\Property(property="title", type="string", description="알림 제목", example="긴급 공지"),
-     * @OA\Property(property="message", type="string", description="알림 본문 내용", example="금일 밤 12시 서버 점검이 있습니다.")
+     * @OA\Property(
+     * property="title",
+     * type="string",
+     * description="알림 제목",
+     * example="새로운 이벤트 알림"
+     * ),
+     * @OA\Property(
+     * property="message",
+     * type="string",
+     * description="알림 본문",
+     * example="회원님, 지금 접속하시면 포인트를 드려요!"
+     * )
      * )
      * ),
      * @OA\Response(
      * response=200,
-     * description="발송 성공",
+     * description="성공",
      * @OA\JsonContent(
      * @OA\Property(property="status", type="string", example="success"),
      * @OA\Property(
      * property="result",
      * type="object",
-     * description="발송 결과 요약",
-     * @OA\Property(property="notification_id", type="integer", description="생성된 알림 로그 ID", example=55),
-     * @OA\Property(property="success_count", type="integer", description="전송 성공한 기기 수", example=10),
-     * @OA\Property(property="failure_count", type="integer", description="전송 실패한 기기 수", example=0)
+     * @OA\Property(property="notification_id", type="integer", example=152),
+     * @OA\Property(property="success_count", type="integer", example=3),
+     * @OA\Property(property="failure_count", type="integer", example=0)
      * )
      * )
      * ),
      * @OA\Response(
-     * response=400,
-     * description="필수 파라미터 누락",
+     * response=401,
+     * description="인증 실패 (토큰 없음 또는 만료)",
      * @OA\JsonContent(
-     * @OA\Property(property="status", type="string", example="error"),
-     * @OA\Property(property="message", type="string", example="수신자(userIds), 제목(title), 본문(message)은 필수입니다.")
+     * @OA\Property(property="message", type="string", example="Invalid or missing token")
      * )
      * ),
      * @OA\Response(
@@ -158,7 +167,7 @@ class NotificationController {
      * description="서버 내부 오류",
      * @OA\JsonContent(
      * @OA\Property(property="status", type="string", example="error"),
-     * @OA\Property(property="message", type="string", example="Server Error Message...")
+     * @OA\Property(property="message", type="string", example="Internal Server Error")
      * )
      * )
      * )
@@ -166,11 +175,18 @@ class NotificationController {
     public function sendNotification() {
         header('Content-Type: application/json');
 
+        $decoded = $this->auth->requireAdmin();
+
         try {
             // Request Body 받기
             $input = json_decode(file_get_contents('php://input'), true);
 
-            $creatorId = $input['creator_id'] ?? 1; 
+            $creatorId = $decodedToken->user_id ?? $decodedToken->id ?? null;
+
+            if (!$creatorId) {
+                throw new Exception('토큰에서 사용자 정보를 찾을 수 없습니다.');
+            }
+
             $userIds   = $input['userIds']    ?? [];
             $title     = $input['title']      ?? '';
             $body      = $input['message']    ?? ''; 
