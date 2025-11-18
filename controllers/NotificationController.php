@@ -17,13 +17,6 @@ use Exception;
  *     name="Notification",
  *     description="알림(발송, 관리) 관련 API"
  * )
- *
- * @OA\SecurityScheme(
- *     securityScheme="bearerAuth",
- *     type="http",
- *     scheme="bearer",
- *     bearerFormat="JWT"
- * )
  */
 class NotificationController {
     private $notificationModel;
