@@ -21,7 +21,7 @@ class NotificationModel {
         ");
 
         $stmt->execute([
-            ':creator_user_id' => $data['creator_user_id'],
+            ':creator_user_id' => $data['creator_id'],
             ':title'           => $data['title'],
             ':body'            => $data['body'],
         ]);
