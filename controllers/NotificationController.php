@@ -181,7 +181,7 @@ class NotificationController {
             // Request Body 받기
             $input = json_decode(file_get_contents('php://input'), true);
 
-            $creatorId = $decodedToken->user_id ?? $decodedToken->id ?? null;
+            $creatorId = $decoded->user_id ?? $decoded->id ?? null;
 
             if (!$creatorId) {
                 throw new Exception('토큰에서 사용자 정보를 찾을 수 없습니다.');
