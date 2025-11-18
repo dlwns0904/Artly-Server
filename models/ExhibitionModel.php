@@ -106,6 +106,7 @@ class ExhibitionModel {
                 // ✅ 새 필드 매핑
                 "exhibition_phone" => $row['exhibition_phone'] ?? null,
                 "exhibition_homepage" => $row['exhibition_homepage'] ?? null,
+                "exhibition_description" => $row['exhibition_description'] ?? null,
 
                 "create_dtm" => $row['create_dtm'],
                 "update_dtm" => $row['update_dtm'],
@@ -161,13 +162,13 @@ class ExhibitionModel {
             (exhibition_title, exhibition_poster, exhibition_category,
             exhibition_start_date, exhibition_end_date, exhibition_start_time, exhibition_end_time,
             exhibition_location, exhibition_price, gallery_id, exhibition_tag, exhibition_status,
-            exhibition_phone, exhibition_homepage,              
+            exhibition_phone, exhibition_homepage, exhibition_description,             
             create_dtm, update_dtm)
             VALUES
             (:title, :poster, :category,
             :start_date, :end_date, :start_time, :end_time,
             :location, :price, :gallery_id, :tag, :status,
-            :phone, :homepage,                                
+            :phone, :homepage, :description,                                
             NOW(), NOW())");
 
         $stmt->execute([
@@ -184,7 +185,8 @@ class ExhibitionModel {
             ':tag'         => $data['exhibition_tag'],
             ':status'      => $data['exhibition_status'],
             ':phone'       => $data['exhibition_phone']    ?? null,  
-            ':homepage'    => $data['exhibition_homepage'] ?? null   
+            ':homepage'    => $data['exhibition_homepage'] ?? null,
+            ':description' => $data['exhibition_description'] ?? null,  
         ]);
 
         $id = $this->pdo->lastInsertId();
@@ -203,19 +205,20 @@ class ExhibitionModel {
         ];
 
         $fieldMap = [
-            'exhibition_title'      => ':title',
-            'exhibition_poster'     => ':poster',
-            'exhibition_category'   => ':category',
-            'exhibition_start_date' => ':start_date',
-            'exhibition_end_date'   => ':end_date',
-            'exhibition_start_time' => ':start_time',
-            'exhibition_end_time'   => ':end_time',
-            'exhibition_location'   => ':location',
-            'exhibition_price'      => ':price',
-            'exhibition_tag'        => ':tag',
-            'exhibition_status'     => ':status',
-            'exhibition_phone'      => ':phone',
-            'exhibition_homepage'   => ':homepage',
+            'exhibition_title'       => ':title',
+            'exhibition_poster'      => ':poster',
+            'exhibition_category'    => ':category',
+            'exhibition_start_date'  => ':start_date',
+            'exhibition_end_date'    => ':end_date',
+            'exhibition_start_time'  => ':start_time',
+            'exhibition_end_time'    => ':end_time',
+            'exhibition_location'    => ':location',
+            'exhibition_price'       => ':price',
+            'exhibition_tag'         => ':tag',
+            'exhibition_status'      => ':status',
+            'exhibition_phone'       => ':phone',
+            'exhibition_homepage'    => ':homepage',
+            'exhibition_description' => ':description',
         ];
 
         foreach ($fieldMap as $column => $placeholder) {
@@ -344,7 +347,7 @@ class ExhibitionModel {
             // 기존 갤러리 확장 필드
             "exhibition_organization" => $exhibition['gallery_name'],
             "exhibition_closed_day" => $exhibition['gallery_closed_day'],
-            "exhibition_description" => $exhibition['gallery_description'],
+            "exhibition_description" => $exhibition['exhibition_description'],
 
             // 추가된 artist, artwork, related
             "artists" => $artists,
