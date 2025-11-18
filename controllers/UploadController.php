@@ -83,6 +83,11 @@ class UploadController
      *         @OA\Property(
      *           property="image", type="string", format="binary",
      *           description="업로드할 이미지 파일 (jpg/png/webp/gif)"
+     *         ),
+     *         @OA\Property(
+     *           property="category", type="string",
+     *           description="저장 카테고리 (기본: image, 'artCatalog'면 media/artCatalog에 저장)",
+     *           example="artCatalog"
      *         )
      *       )
      *     )
@@ -119,9 +124,18 @@ class UploadController
             return;
         }
 
+        // ✅ category 파라미터 처리 (기본값: image, 값이 'artCatalog'면 artCatalog)
+        $category = $_POST['category'] ?? null;          // form-data 텍스트 필드
+        // $category = $_POST['category'] ?? ($_GET['category'] ?? null);
+
+        $subdir = 'image';                               // 기본 저장 폴더
+        if ($category === 'artCatalog') {
+            $subdir = 'artCatalog';
+        }
+
         try {
-            // media/image 하위에 저장
-            $relative = $this->saveUploadedImage($_FILES['image'], 'image');
+            // media/{subdir} 하위에 저장
+            $relative = $this->saveUploadedImage($_FILES['image'], $subdir);
             $absolute = $this->toAbsoluteUrl($relative);
 
             // 요구사항: 업로드된 이미지 URL만 JSON으로 반환
