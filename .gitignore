@@ -4,3 +4,4 @@ vendor_backup_*
 
 
 config.php
+secrets/

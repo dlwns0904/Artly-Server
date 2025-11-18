@@ -3297,6 +3297,11 @@
                                         "description": "업로드할 이미지 파일 (jpg/png/webp/gif)",
                                         "type": "string",
                                         "format": "binary"
+                                    },
+                                    "category": {
+                                        "description": "저장 카테고리 (기본: image, 'artCatalog'면 media/artCatalog에 저장)",
+                                        "type": "string",
+                                        "example": "artCatalog"
                                     }
                                 },
                                 "type": "object"
