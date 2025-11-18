@@ -27,6 +27,7 @@ use Controllers\ImageController;
 use Controllers\ImageGenerateConsoleController;
 use Controllers\UploadController;
 use Controllers\InvitationGenerateConsoleController;
+use Controllers\NotificationController;
 
 
 
@@ -264,6 +265,15 @@ elseif ($requestMethod === 'POST' && $requestUri === '/api/console/invitation/cr
 }
 elseif ($requestMethod === 'POST' && $requestUri === '/api/console/invitation/refine') {
     (new \Controllers\InvitationGenerateConsoleController())->refineInvitation();
+}
+
+
+/* ───────────────────────── Notification ───────────────────────── */
+elseif ($requestMethod === 'POST' && $requestUri === '/api/notification/registerToken') {
+    (new \Controllers\NotificationController())->registerToken();
+}
+elseif ($requestMethod === 'POST' && $requestUri === '/api/notification/send') {
+    (new \Controllers\NotificationController())->sendNotification();
 }
 
 
