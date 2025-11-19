@@ -150,6 +150,7 @@ class NotificationController {
      * property="result",
      * type="object",
      * @OA\Property(property="notification_id", type="integer", example=152),
+     * @OA\Property(property="target_user_count", type="integer", example=2),
      * @OA\Property(property="success_count", type="integer", example=3),
      * @OA\Property(property="failure_count", type="integer", example=0)
      * )
@@ -175,80 +176,93 @@ class NotificationController {
     public function sendNotification() {
         header('Content-Type: application/json');
 
-        $decoded = $this->auth->requireAdmin();
+        $decoded = $this->auth->requireAdmin(); // Admin 권한 체크
 
         try {
-            // Request Body 받기
             $input = json_decode(file_get_contents('php://input'), true);
 
             $creatorId = $decoded->user_id ?? $decoded->id ?? null;
-
-            if (!$creatorId) {
-                throw new Exception('토큰에서 사용자 정보를 찾을 수 없습니다.');
-            }
-
             $userIds   = $input['userIds']    ?? [];
             $title     = $input['title']      ?? '';
             $body      = $input['message']    ?? ''; 
 
             if (empty($userIds) || empty($title) || empty($body)) {
-                throw new Exception('수신자(userIds), 제목(title), 본문(message)은 필수입니다.');
+                throw new Exception('필수 정보 누락');
             }
 
-            $savedNoti = $this->notificationModel->create([
+            // [수정] 이제 모델이 공통 ID(숫자)를 반환합니다.
+            $notificationId = $this->notificationModel->create([
+                'userIds'    => $userIds,
                 'creator_id' => $creatorId,
                 'title'      => $title,
                 'body'       => $body
             ]);
 
+            if (!$notificationId) {
+                throw new Exception('DB 저장 실패');
+            }
+
             $tokens = $this->tokenModel->getTokensByUserIds($userIds);
 
+            // 토큰 없어도 DB 저장은 성공했으므로 성공 처리하되 메시지로 알림
             if (empty($tokens)) {
                 echo json_encode([
                     'status' => 'success',
-                    'message' => '알림은 저장되었으나, 발송 가능한 디바이스 토큰이 없습니다.',
-                    'saved_data' => $savedNoti
+                    'message' => '알림이 생성되었으나 전송할 토큰이 없습니다.',
+                    'result' => [
+                        'notification_id'   => $notificationId,
+                        'target_user_count' => count($userIds),
+                        'success_count'     => 0,
+                        'failure_count'     => 0
+                    ]
                 ]);
                 return;
             }
 
-            // Firebase 발송 
-            
-            // 서비스 계정 키 파일 경로
+            // Firebase 발송
             $serviceAccountPath = __DIR__ . '/../secrets/soundgram-tot-firebase-adminsdk-awy7u-6246f7929f.json'; 
-            
             $factory = (new Factory)->withServiceAccount($serviceAccountPath);
             $messaging = $factory->createMessaging();
 
-            // 알림 객체 생성
             $notification = Notification::create($title, $body);
 
-            // 메시지 패키징
             $message = CloudMessage::new()
-                ->withNotification($notification) // 앱 알림 (Notification)
-                ->withData([                      // 추가 데이터 (선택)
-                    'notification_id' => $savedNoti['id'],
+                ->withNotification($notification)
+                ->withData([
+                    'notification_id' => (string) $notificationId, 
                     'click_action'    => 'FLUTTER_NOTIFICATION_CLICK' 
                 ]);
 
-            // Multicast 전송
-            $report = $messaging->sendMulticast($message, $tokens);
+                $successCount = 0;
+                $failureCount = 0;
+    
+                foreach ($tokens as $token) {
+                    try {
 
-            echo json_encode([
-                'status' => 'success',
-                'result' => [
-                    'notification_id' => $savedNoti['id'],
-                    'success_count'   => $report->successCount(),
-                    'failure_count'   => $report->failureCount()
-                ]
-            ]);
-
-        } catch (Exception $e) {
+                        $individualMessage = $message->withChangedTarget('token', $token);
+                        
+                        $messaging->send($individualMessage);
+                        $successCount++;
+                    } catch (\Exception $e) {
+                        // 개별 전송 실패 시 카운트만 하고 계속 진행(로그 추가할까..?)
+                        $failureCount++;
+                        // error_log("FCM Send Error for token $token: " . $e->getMessage());
+                    }
+                }
+    
+                echo json_encode([
+                    'status' => 'success',
+                    'result' => [
+                        'notification_id'   => $notificationId,
+                        'target_user_count' => count($userIds),
+                        'success_count'     => $successCount,
+                        'failure_count'     => $failureCount
+                    ]
+                ]);
+    
+            } catch (Exception $e) {
             http_response_code(500);
-            echo json_encode([
-                'status'  => 'error',
-                'message' => $e->getMessage()
-            ]);
+            echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
         }
     }
 }

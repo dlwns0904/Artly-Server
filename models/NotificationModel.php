@@ -13,24 +13,54 @@ class NotificationModel {
     }
 
     public function create($data) {
-        $stmt = $this->pdo->prepare("
-            INSERT INTO APIServer_notification
-                (creator_id, title, body, create_dtm)
-            VALUES
-                (:creator_user_id, :title, :body, NOW())
-        ");
+        if (empty($data['userIds']) || !is_array($data['userIds'])) {
+            return null;
+        }
 
-        $stmt->execute([
-            ':creator_user_id' => $data['creator_id'],
-            ':title'           => $data['title'],
-            ':body'            => $data['body'],
-        ]);
+        try {
+            $this->pdo->beginTransaction();
 
-        $id = $this->pdo->lastInsertId();
+            // 1. 마스터 테이블(APIServer_notification)에 알림 내용 저장
+            $stmtMaster = $this->pdo->prepare("
+                INSERT INTO APIServer_notification 
+                    (creator_id, title, body, create_dtm)
+                VALUES 
+                    (:creator_id, :title, :body, NOW())
+            ");
+            
+            $stmtMaster->execute([
+                ':creator_id' => $data['creator_id'],
+                ':title'      => $data['title'],
+                ':body'       => $data['body']
+            ]);
 
-        $stmt = $this->pdo->prepare("SELECT * FROM APIServer_notification WHERE id = :id");
-        $stmt->execute([':id' => $id]);
-        return $stmt->fetch(PDO::FETCH_ASSOC);
-        
+            // 생성된 공통 Notification ID 획득
+            $notificationId = $this->pdo->lastInsertId();
+
+            // 2. 수신여부 테이블(APIServer_notification_read)에 유저별로 저장
+            $stmtRead = $this->pdo->prepare("
+                INSERT INTO APIServer_notification_read
+                    (notification_id, target_user_id, is_checked)
+                VALUES 
+                    (:noti_id, :target_id, 0)
+            ");
+
+            foreach ($data['userIds'] as $userId) {
+                $stmtRead->execute([
+                    ':noti_id'   => $notificationId,
+                    ':target_id' => $userId
+                ]);
+            }
+
+            $this->pdo->commit();
+            
+            return $notificationId;
+
+        } catch (\Exception $e) {
+            if ($this->pdo->inTransaction()) {
+                $this->pdo->rollBack();
+            }
+            throw $e;
+        }
     }
 }

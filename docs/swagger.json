@@ -2972,6 +2972,10 @@
                                                     "type": "integer",
                                                     "example": 152
                                                 },
+                                                "target_user_count": {
+                                                    "type": "integer",
+                                                    "example": 2
+                                                },
                                                 "success_count": {
                                                     "type": "integer",
                                                     "example": 3
