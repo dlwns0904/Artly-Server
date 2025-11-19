@@ -265,4 +265,101 @@ class NotificationController {
             echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
         }
     }
+
+    /**
+     * @OA\Get(
+     * path="/api/notification/console",
+     * summary="[관리자] 보낸 알림 이력 조회",
+     * description="관리자가 자신이 발송한 알림 목록을 조회합니다.",
+     * tags={"Notification"},
+     * security={{"bearerAuth":{}}},
+     * @OA\Response(
+     * response=200,
+     * description="성공",
+     * @OA\JsonContent(
+     * @OA\Property(property="status", type="string", example="success"),
+     * @OA\Property(
+     * property="data",
+     * type="array",
+     * @OA\Items(
+     * @OA\Property(property="id", type="integer", example=1),
+     * @OA\Property(property="creator_id", type="integer", example=5),
+     * @OA\Property(property="title", type="string", example="공지사항"),
+     * @OA\Property(property="body", type="string", example="내용입니다."),
+     * @OA\Property(property="create_dtm", type="string", format="date-time")
+     * )
+     * )
+     * )
+     * )
+     * )
+     */
+    public function getByCreatorId() {
+        header('Content-Type: application/json');
+
+        try {
+            // 관리자 권한 체크 및 ID 획득
+            $decoded = $this->auth->requireAdmin();
+            $creatorId = $decoded->user_id ?? $decoded->id;
+
+            $list = $this->notificationModel->getByCreatorId($creatorId);
+
+            echo json_encode([
+                'status' => 'success',
+                'data'   => $list
+            ]);
+
+        } catch (Exception $e) {
+            http_response_code(500);
+            echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+        }
+    }
+
+    /**
+     * @OA\Get(
+     * path="/api/notification/user",
+     * summary="[유저] 내 알림함 조회",
+     * description="로그인한 유저가 받은 알림 목록과 읽음 여부를 조회합니다.",
+     * tags={"Notification"},
+     * security={{"bearerAuth":{}}},
+     * @OA\Response(
+     * response=200,
+     * description="성공",
+     * @OA\JsonContent(
+     * @OA\Property(property="status", type="string", example="success"),
+     * @OA\Property(
+     * property="data",
+     * type="array",
+     * @OA\Items(
+     * @OA\Property(property="notification_id", type="integer", example=10),
+     * @OA\Property(property="title", type="string", example="이벤트 당첨 안내"),
+     * @OA\Property(property="body", type="string", example="축하합니다!"),
+     * @OA\Property(property="create_dtm", type="string", format="date-time"),
+     * @OA\Property(property="is_checked", type="integer", description="0:안읽음, 1:읽음", example=0),
+     * @OA\Property(property="read_id", type="integer", description="읽음처리용 ID", example=55)
+     * )
+     * )
+     * )
+     * )
+     * )
+     */
+    public function getByTargetUserId() {
+        header('Content-Type: application/json');
+
+        try { 
+            $decoded = $this->auth->decodeToken(); 
+            
+            $userId = $decoded->user_id ?? $decoded->id;
+
+            $list = $this->notificationModel->getByTargetUserId($userId);
+
+            echo json_encode([
+                'status' => 'success',
+                'data'   => $list
+            ]);
+
+        } catch (Exception $e) {
+            http_response_code(500);
+            echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+        }
+    }
 }

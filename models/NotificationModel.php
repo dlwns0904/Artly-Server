@@ -63,4 +63,34 @@ class NotificationModel {
             throw $e;
         }
     }
+
+    public function getByCreatorId($creatorId) {
+        $sql = "SELECT * FROM APIServer_notification 
+                WHERE creator_id = :creator_id 
+                ORDER BY create_dtm DESC"; // 최신순 정렬
+
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute([':creator_id' => $creatorId]);
+        
+        return $stmt->fetchAll(\PDO::FETCH_ASSOC);
+    }
+    
+    public function getByTargetUserId($targetUserId) {
+        $sql = "SELECT 
+                    N.id AS notification_id,
+                    N.title,
+                    N.body,
+                    N.create_dtm,
+                    R.is_checked,
+                    R.id AS read_id
+                FROM APIServer_notification_read R
+                JOIN APIServer_notification N ON R.notification_id = N.id
+                WHERE R.target_user_id = :user_id
+                ORDER BY N.create_dtm DESC";
+
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute([':user_id' => $targetUserId]);
+
+        return $stmt->fetchAll(\PDO::FETCH_ASSOC);
+    }
 }
