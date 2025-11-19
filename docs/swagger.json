@@ -3037,6 +3037,134 @@
                 ]
             }
         },
+        "/api/notification/console": {
+            "get": {
+                "tags": [
+                    "Notification"
+                ],
+                "summary": "[관리자] 보낸 알림 이력 조회",
+                "description": "관리자가 자신이 발송한 알림 목록을 조회합니다.",
+                "operationId": "806777512a23332e986419424f840012",
+                "responses": {
+                    "200": {
+                        "description": "성공",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "status": {
+                                            "type": "string",
+                                            "example": "success"
+                                        },
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "properties": {
+                                                    "id": {
+                                                        "type": "integer",
+                                                        "example": 1
+                                                    },
+                                                    "creator_id": {
+                                                        "type": "integer",
+                                                        "example": 5
+                                                    },
+                                                    "title": {
+                                                        "type": "string",
+                                                        "example": "공지사항"
+                                                    },
+                                                    "body": {
+                                                        "type": "string",
+                                                        "example": "내용입니다."
+                                                    },
+                                                    "create_dtm": {
+                                                        "type": "string",
+                                                        "format": "date-time"
+                                                    }
+                                                },
+                                                "type": "object"
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/notification/user": {
+            "get": {
+                "tags": [
+                    "Notification"
+                ],
+                "summary": "[유저] 내 알림함 조회",
+                "description": "로그인한 유저가 받은 알림 목록과 읽음 여부를 조회합니다.",
+                "operationId": "7c4219e0b9b242b25bb1e57c1d1aae80",
+                "responses": {
+                    "200": {
+                        "description": "성공",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "status": {
+                                            "type": "string",
+                                            "example": "success"
+                                        },
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "properties": {
+                                                    "notification_id": {
+                                                        "type": "integer",
+                                                        "example": 10
+                                                    },
+                                                    "title": {
+                                                        "type": "string",
+                                                        "example": "이벤트 당첨 안내"
+                                                    },
+                                                    "body": {
+                                                        "type": "string",
+                                                        "example": "축하합니다!"
+                                                    },
+                                                    "create_dtm": {
+                                                        "type": "string",
+                                                        "format": "date-time"
+                                                    },
+                                                    "is_checked": {
+                                                        "description": "0:안읽음, 1:읽음",
+                                                        "type": "integer",
+                                                        "example": 0
+                                                    },
+                                                    "read_id": {
+                                                        "description": "읽음처리용 ID",
+                                                        "type": "integer",
+                                                        "example": 55
+                                                    }
+                                                },
+                                                "type": "object"
+                                            }
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
         "/api/reservations": {
             "post": {
                 "tags": [
