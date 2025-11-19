@@ -107,48 +107,83 @@ class UploadController
      */
     public function uploadImage()
     {
-        // 인증 X면 삭제
-        $this->auth->authenticate();
+    // 인증 X면 삭제
+    $this->auth->authenticate();
 
-        header('Content-Type: application/json; charset=utf-8');
+    header('Content-Type: application/json; charset=utf-8');
 
-        if (empty($_SERVER['CONTENT_TYPE']) || stripos($_SERVER['CONTENT_TYPE'], 'multipart/form-data') === false) {
-            http_response_code(400);
-            echo json_encode(['message' => 'multipart/form-data 로 업로드해주세요.'], JSON_UNESCAPED_UNICODE);
-            return;
-        }
-
-        if (empty($_FILES['image'])) {
-            http_response_code(400);
-            echo json_encode(['message' => 'image 파일이 필요합니다. (form field name: image)'], JSON_UNESCAPED_UNICODE);
-            return;
-        }
-
-        // ✅ category 파라미터 처리 (기본값: image, 값이 'artCatalog'면 artCatalog)
-        $category = $_POST['category'] ?? null;          // form-data 텍스트 필드
-        // $category = $_POST['category'] ?? ($_GET['category'] ?? null);
-
-        $subdir = 'image';                               // 기본 저장 폴더
-        if ($category === 'artCatalog') {
-            $subdir = 'artCatalog';
-        }
-
-        try {
-            // media/{subdir} 하위에 저장
-            $relative = $this->saveUploadedImage($_FILES['image'], $subdir);
-            $absolute = $this->toAbsoluteUrl($relative);
-
-            // 요구사항: 업로드된 이미지 URL만 JSON으로 반환
-            echo json_encode(['url' => $absolute], JSON_UNESCAPED_UNICODE);
-        } catch (\InvalidArgumentException $e) {
-            http_response_code(415);
-            echo json_encode(['message' => $e->getMessage()], JSON_UNESCAPED_UNICODE);
-        } catch (\RuntimeException $e) {
-            http_response_code(500);
-            echo json_encode(['message' => $e->getMessage()], JSON_UNESCAPED_UNICODE);
-        } catch (\Throwable $e) {
-            http_response_code(500);
-            echo json_encode(['message' => '알 수 없는 오류가 발생했습니다.'], JSON_UNESCAPED_UNICODE);
-        }
+    if (empty($_SERVER['CONTENT_TYPE']) || stripos($_SERVER['CONTENT_TYPE'], 'multipart/form-data') === false) {
+        http_response_code(400);
+        echo json_encode(['message' => 'multipart/form-data 로 업로드해주세요.'], JSON_UNESCAPED_UNICODE);
+        return;
     }
+
+    if (empty($_FILES['image'])) {
+        http_response_code(400);
+        echo json_encode(['message' => 'image 파일이 필요합니다. (form field name: image 또는 image[])'], JSON_UNESCAPED_UNICODE);
+        return;
+    }
+
+    // ✅ category 파라미터 처리 (기본: image, artCatalog면 artCatalog)
+    $category = $_POST['category'] ?? null;
+    $subdir   = ($category === 'artCatalog') ? 'artCatalog' : 'image';
+
+    try {
+        $fileField = $_FILES['image'];
+
+        // 1) 여러 장 업로드: image[] 로 들어온 경우 (name이 배열)
+        if (is_array($fileField['name'])) {
+            $urls = [];
+
+            $count = count($fileField['name']);
+            for ($i = 0; $i < $count; $i++) {
+                // 각 파일을 saveUploadedImage 형식에 맞게 재구성
+                $file = [
+                    'name'     => $fileField['name'][$i],
+                    'type'     => $fileField['type'][$i],
+                    'tmp_name' => $fileField['tmp_name'][$i],
+                    'error'    => $fileField['error'][$i],
+                    'size'     => $fileField['size'][$i],
+                ];
+
+                if ($file['error'] !== UPLOAD_ERR_OK) {
+                    // 하나라도 실패하면 건너뛰거나, 여기서 에러 리턴할지 정책 선택 가능
+                    // 일단은 건너뛰는 예시:
+                    continue;
+                }
+
+                $relative = $this->saveUploadedImage($file, $subdir);
+                $absolute = $this->toAbsoluteUrl($relative);
+                $urls[]   = $absolute;
+            }
+
+            if (empty($urls)) {
+                http_response_code(500);
+                echo json_encode(['message' => '업로드에 성공한 이미지가 없습니다.'], JSON_UNESCAPED_UNICODE);
+                return;
+            }
+
+            // ✅ 여러 장일 때 응답: urls 배열
+            echo json_encode(['urls' => $urls], JSON_UNESCAPED_UNICODE);
+            return;
+        }
+
+        // 2) 단일 업로드: 기존 방식 (image 하나)
+        $relative = $this->saveUploadedImage($fileField, $subdir);
+        $absolute = $this->toAbsoluteUrl($relative);
+
+        // 단일일 때는 기존과 호환되게 url만 반환
+        echo json_encode(['url' => $absolute], JSON_UNESCAPED_UNICODE);
+
+    } catch (\InvalidArgumentException $e) {
+        http_response_code(415);
+        echo json_encode(['message' => $e->getMessage()], JSON_UNESCAPED_UNICODE);
+    } catch (\RuntimeException $e) {
+        http_response_code(500);
+        echo json_encode(['message' => $e->getMessage()], JSON_UNESCAPED_UNICODE);
+    } catch (\Throwable $e) {
+        http_response_code(500);
+        echo json_encode(['message' => '알 수 없는 오류가 발생했습니다.'], JSON_UNESCAPED_UNICODE);
+    }
+}
 }
