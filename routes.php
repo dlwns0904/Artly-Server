@@ -275,6 +275,12 @@ elseif ($requestMethod === 'POST' && $requestUri === '/api/notification/register
 elseif ($requestMethod === 'POST' && $requestUri === '/api/notification/send') {
     (new \Controllers\NotificationController())->sendNotification();
 }
+elseif ($requestMethod === 'GET' && $requestUri === '/api/notification/console') {
+    (new \Controllers\NotificationController())->getByCreatorId();
+}
+elseif ($requestMethod === 'GET' && $requestUri === '/api/notification/user') {
+    (new \Controllers\NotificationController())->getByTargetUserId();
+}
 
 
 /* ───────────────────────── 기본/404 ───────────────────────── */

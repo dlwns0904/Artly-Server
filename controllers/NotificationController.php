@@ -347,7 +347,7 @@ class NotificationController {
 
         try { 
             $decoded = $this->auth->decodeToken(); 
-            
+
             $userId = $decoded->user_id ?? $decoded->id;
 
             $list = $this->notificationModel->getByTargetUserId($userId);

@@ -76,6 +76,7 @@ class NotificationModel {
     }
     
     public function getByTargetUserId($targetUserId) {
+        // 최신 알림을 먼저보도록 내림차순정렬함
         $sql = "SELECT 
                     N.id AS notification_id,
                     N.title,
