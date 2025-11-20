@@ -362,4 +362,63 @@ class NotificationController {
             echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
         }
     }
+
+    /**
+     * @OA\Post(
+     * path="/api/notification/updateReadStatus",
+     * summary="[유저] 알림 읽음 처리",
+     * description="특정 알림을 '읽음(is_checked=1)' 상태로 변경합니다.",
+     * tags={"Notification"},
+     * security={{"bearerAuth":{}}},
+     * @OA\RequestBody(
+     * required=true,
+     * description="읽을 알림의 ID",
+     * @OA\JsonContent(
+     * required={"notification_id"},
+     * @OA\Property(property="notification_id", type="integer", description="알림 ID", example=55)
+     * )
+     * ),
+     * @OA\Response(
+     * response=200,
+     * description="성공",
+     * @OA\JsonContent(
+     * @OA\Property(property="status", type="string", example="success"),
+     * @OA\Property(property="message", type="string", example="알림을 읽음 처리했습니다.")
+     * )
+     * ),
+     * @OA\Response(
+     * response=400,
+     * description="잘못된 요청",
+     * @OA\JsonContent(@OA\Property(property="message", type="string", example="notification_id가 필요합니다."))
+     * )
+     * )
+     */
+    public function markAsRead() {
+        header('Content-Type: application/json');
+
+        try {
+            $decoded = $this->auth->decodeToken(); 
+            $userId = $decoded->user_id ?? $decoded->id;
+
+            $input = json_decode(file_get_contents('php://input'), true);
+            $notificationId = $input['notification_id'] ?? null;
+
+            if (empty($notificationId)) {
+                http_response_code(400);
+                echo json_encode(['status' => 'error', 'message' => 'notification_id가 필요합니다.']);
+                return;
+            }
+
+            $this->notificationModel->updateReadStatus($userId, $notificationId);
+
+            echo json_encode([
+                'status' => 'success',
+                'message' => '해당 알림을 읽음 처리했습니다.'
+            ]);
+
+        } catch (Exception $e) {
+            http_response_code(500);
+            echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+        }
+    }
 }

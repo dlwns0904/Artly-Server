@@ -281,6 +281,9 @@ elseif ($requestMethod === 'GET' && $requestUri === '/api/notification/console')
 elseif ($requestMethod === 'GET' && $requestUri === '/api/notification/user') {
     (new \Controllers\NotificationController())->getByTargetUserId();
 }
+elseif ($requestMethod === 'POST' && $requestUri === '/api/notification/updateReadStatus') {
+    (new \Controllers\NotificationController())->markAsRead();
+}
 
 
 /* ───────────────────────── 기본/404 ───────────────────────── */

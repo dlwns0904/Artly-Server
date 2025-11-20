@@ -378,12 +378,12 @@ class GalleryModel {
         $arr = $snsInput;
     }
 
-    // 스키마 검증: 배열, 최대 4개, 각 아이템 {platform,url}
+    // 스키마 검증: 배열, 최대 4개, 각 아이템 {type,url}
     if (count($arr) > 4) {
         throw new \InvalidArgumentException('gallery_sns는 최대 4개까지입니다.');
     }
 
-    $allowedPlatforms = [
+    $allowedTypes = [
         'instagram','facebook','x','youtube','tiktok','naver_blog','kakao_channel','homepage','etc'
     ];
 
@@ -392,21 +392,21 @@ class GalleryModel {
         if (!is_array($item)) {
             throw new \InvalidArgumentException("gallery_sns[$i] 형식이 잘못되었습니다.");
         }
-        $platform = isset($item['platform']) ? strtolower(trim($item['platform'])) : null;
+        $type = isset($item['type']) ? strtolower(trim($item['type'])) : null;
         $url = isset($item['url']) ? trim($item['url']) : null;
 
-        if ($platform === null || $url === null) {
-            throw new \InvalidArgumentException("gallery_sns[$i]는 platform, url이 필요합니다.");
+        if ($type === null || $url === null) {
+            throw new \InvalidArgumentException("gallery_sns[$i]는 type, url이 필요합니다.");
         }
         // 플랫폼 화이트리스트(원하면 주석 처리 가능)
-        if (!in_array($platform, $allowedPlatforms, true)) {
-            throw new \InvalidArgumentException("허용되지 않는 platform: {$platform}");
+        if (!in_array($type, $allowedTypes, true)) {
+            throw new \InvalidArgumentException("허용되지 않는 type: {$type}");
         }
         // URL 대략 검증(선택)
         if (!preg_match('#^https?://#i', $url)) {
             throw new \InvalidArgumentException("gallery_sns[$i].url 형식이 잘못되었습니다.");
         }
-        $out[] = ['platform'=>$platform, 'url'=>$url];
+        $out[] = ['type'=>$type, 'url'=>$url];
     }
 
     // JSON 문자열로 반환(한글 안전)

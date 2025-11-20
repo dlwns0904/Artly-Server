@@ -3165,6 +3165,80 @@
                 ]
             }
         },
+        "/api/notification/updateReadStatus": {
+            "post": {
+                "tags": [
+                    "Notification"
+                ],
+                "summary": "[유저] 알림 읽음 처리",
+                "description": "특정 알림을 '읽음(is_checked=1)' 상태로 변경합니다.",
+                "operationId": "706976a6bf09da1f36c9ac994c6a293b",
+                "requestBody": {
+                    "description": "읽을 알림의 ID",
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "notification_id"
+                                ],
+                                "properties": {
+                                    "notification_id": {
+                                        "description": "알림 ID",
+                                        "type": "integer",
+                                        "example": 55
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "성공",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "status": {
+                                            "type": "string",
+                                            "example": "success"
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "알림을 읽음 처리했습니다."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "잘못된 요청",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "notification_id가 필요합니다."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
         "/api/reservations": {
             "post": {
                 "tags": [

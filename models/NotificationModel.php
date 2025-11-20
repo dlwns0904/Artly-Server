@@ -94,4 +94,21 @@ class NotificationModel {
 
         return $stmt->fetchAll(\PDO::FETCH_ASSOC);
     }
+
+    public function updateReadStatus($userId, $notificationId) {
+        $sql = "UPDATE APIServer_notification_read 
+                SET is_checked = 1 
+                WHERE notification_id = :noti_id 
+                  AND target_user_id = :user_id";
+
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute([
+            ':noti_id' => $notificationId,
+            ':user_id' => $userId
+        ]);
+
+        // 변경된 행이 있거나, 쿼리가 성공했으면 true
+        // (이미 1인 상태여도 에러는 아니므로 성공 처리)
+        return $stmt->rowCount() >= 0;
+    }
 }
