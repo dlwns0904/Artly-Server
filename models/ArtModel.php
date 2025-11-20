@@ -10,120 +10,112 @@ class ArtModel {
         $config = require __DIR__ . '/../config/config.php';
         $this->pdo = new PDO($config['dsn'], $config['user'], $config['password']);
         $this->pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+        $this->pdo->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
     }
 
     public function getAll($filters = []) {
-        $sql = "SELECT *
-                FROM APIServer_art A
-                WHERE 1=1 ";
+        $sql = "SELECT * FROM APIServer_art A WHERE 1=1 ";
         $params = [];
 
-        // (옵션) 특정 전시에 속한 작품만 조회
         if (!empty($filters['exhibition_id'])) {
             $sql .= "AND EXISTS (
                         SELECT 1
-                        FROM APIServer_exhibition_art EA
-                        WHERE EA.art_id = A.id
-                          AND EA.exhibition_id = :exhibition_id
+                          FROM APIServer_exhibition_art EA
+                         WHERE EA.art_id = A.id
+                           AND EA.exhibition_id = :exhibition_id
                      ) ";
             $params[':exhibition_id'] = $filters['exhibition_id'];
         }
 
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute($params);
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        return $stmt->fetchAll();
     }
 
     public function getById($id) {
         $stmt = $this->pdo->prepare("
-            SELECT 
-                a.*, 
-                ar.artist_name 
-            FROM 
-                APIServer_art a
-            LEFT JOIN 
-                APIServer_artist ar 
-              ON a.artist_id = ar.id
-            WHERE 
-                a.id = :id
+            SELECT a.*, ar.artist_name
+              FROM APIServer_art a
+         LEFT JOIN APIServer_artist ar ON a.artist_id = ar.id
+             WHERE a.id = :id
         ");
         $stmt->execute([':id' => $id]);
-        return $stmt->fetch(PDO::FETCH_ASSOC);
+        return $stmt->fetch();
     }
 
     public function getExhibitionIdByArtId($id) {
         $stmt = $this->pdo->prepare("
-            SELECT
-                ea.exhibition_id
-            FROM
-                APIServer_exhibition_art ea
-            WHERE
-                ea.art_id = :id
+            SELECT ea.exhibition_id
+              FROM APIServer_exhibition_art ea
+             WHERE ea.art_id = :id
         ");
         $stmt->execute([':id' => $id]);
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+        return $stmt->fetchAll();
     }
 
     public function create($data) {
         $stmt = $this->pdo->prepare("
-            INSERT INTO APIServer_art 
+            INSERT INTO APIServer_art
                 (art_image, artist_id, art_title, art_description, art_docent,
-                 art_material, art_size, art_year,
+                 art_material, art_size, art_year, gallery_phone,
                  create_dtm, update_dtm)
-            VALUES 
+            VALUES
                 (:image, :artist_id, :title, :description, :docent,
                  :material, :size, :year,
                  NOW(), NOW())
         ");
 
         $stmt->execute([
-            ':image'     => $data['art_image']       ?? null,
-            ':artist_id' => $data['artist_id']       ?? null,
-            ':title'     => $data['art_title']       ?? null,
-            ':description'=> $data['art_description']?? null,
-            ':docent'    => $data['art_docent']      ?? null,
-            ':material'  => $data['art_material']    ?? null,   
-            ':size'      => $data['art_size']        ?? null,   
-            ':year'      => $data['art_year']        ?? null,   
+            ':image'       => $data['art_image']        ?? null,   // 상대경로 or null
+            ':artist_id'   => $data['artist_id']        ?? null,
+            ':title'       => $data['art_title']        ?? null,
+            ':description' => $data['art_description']  ?? null,
+            ':docent'      => $data['art_docent']       ?? null,
+            ':material'    => $data['art_material']     ?? null,
+            ':size'        => $data['art_size']         ?? null,
+            ':year'        => $data['art_year']         ?? null,
+            ':gallery_phone' => $data['gallery_phone']   ?? null,
         ]);
 
         $id = $this->pdo->lastInsertId();
-
         $stmt = $this->pdo->prepare("SELECT * FROM APIServer_art WHERE id = :id");
         $stmt->execute([':id' => $id]);
-        return $stmt->fetch(PDO::FETCH_ASSOC);
+        return $stmt->fetch();
     }
 
+    /**
+     * 부분 업데이트 지원: 제공된 키만 SET
+     * art_image는 데이터에 있을 때만 변경(없으면 유지)
+     */
     public function update($id, $data) {
-        $setParts = [];
+        $fields = [];
         $params = [':id' => $id];
 
-        $fieldMap = [
-            'art_image'       => ':image',
-            'artist_id'       => ':artist_id',
-            'art_title'       => ':title',
-            'art_description' => ':description',
-            'art_docent'      => ':docent',
-            'art_material'    => ':material',
-            'art_size'        => ':size',
-            'art_year'        => ':year',
+        $mapping = [
+            'art_image'      => 'image',
+            'artist_id'      => 'artist_id',
+            'art_title'      => 'title',
+            'art_description'=> 'description',
+            'art_docent'     => 'docent',
+            'art_material'   => 'material',
+            'art_size'       => 'size',
+            'art_year'       => 'year',
+            'gallery_phone'  => 'gallery_phone',
         ];
 
-        foreach ($fieldMap as $column => $placeholder) {
-            // "array_key_exists"를 사용하여 키 존재 여부 확인
-            if (array_key_exists($column, $data)) {
-                $setParts[] = "$column = $placeholder";
-                $params[$placeholder] = $data[$column];
+        foreach ($mapping as $col => $param) {
+            if (array_key_exists($col, $data)) {
+                $fields[] = "$col = :$param";
+                $params[":$param"] = $data[$col];
             }
         }
 
-        if (empty($setParts)) {
-            return true; // 변경된 내용이 없지만 성공으로 간주
+        if (empty($fields)) {
+            // 아무 것도 바꿀 게 없음
+            return true;
         }
 
-        $setParts[] = "update_dtm = NOW()";
-        $sql = "UPDATE APIServer_art SET " . implode(', ', $setParts) . " WHERE id = :id";
-
+        $sql = "UPDATE APIServer_art SET " . implode(', ', $fields) . ", update_dtm = NOW() WHERE id = :id";
         $stmt = $this->pdo->prepare($sql);
         return $stmt->execute($params);
     }
