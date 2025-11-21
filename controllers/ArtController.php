@@ -285,7 +285,7 @@ class ArtController {
      *         @OA\Property(property="art_docent", type="string"),
      *         @OA\Property(property="art_material", type="string"),
      *         @OA\Property(property="art_size", type="string"),
-     *         @OA\Property(property="art_year", type="string")
+     *         @OA\Property(property="art_year", type="string"),
      *         @OA\Property(property="gallery_phone", type="string")
      *       )
      *     )
