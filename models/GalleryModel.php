@@ -365,17 +365,37 @@ class GalleryModel {
     if (is_string($snsInput)) {
         $trim = trim($snsInput);
         if ($trim === '') return null;
-        // 유효한 JSON이 아니면 예외
-        if (!json_decode($trim, true) || json_last_error() !== JSON_ERROR_NONE) {
-            throw new \InvalidArgumentException('gallery_sns는 JSON 배열이어야 합니다.');
+
+        // 1. JSON 문법 검사
+        $decoded = json_decode($trim, true);
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            throw new \InvalidArgumentException('gallery_sns 형식이 올바르지 않은 JSON 문자열입니다.');
         }
-        $arr = json_decode($trim, true);
+        $arr = $decoded;
     } else {
-        // 배열/객체라면 그대로 사용
+        // 배열로 들어온 경우
         if (!is_array($snsInput)) {
             throw new \InvalidArgumentException('gallery_sns는 배열이어야 합니다.');
         }
         $arr = $snsInput;
+    }
+
+    if (!is_array($arr)) {
+        throw new \InvalidArgumentException('gallery_sns는 JSON 배열([]) 형태여야 합니다.');
+    }
+
+    if (!empty($arr)) {
+        foreach ($arr as $index => $item) {
+            // 요소 하나하나가 배열(객체)이어야 함
+            if (!is_array($item)) {
+                 throw new \InvalidArgumentException("gallery_sns의 {$index}번째 요소가 객체 형태가 아닙니다. 대괄호 []로 감싸져 있는지 확인하세요.");
+            }
+
+            // 필수 키(type, url)가 있는지 확인
+            if (!array_key_exists('type', $item) || !array_key_exists('url', $item)) {
+                throw new \InvalidArgumentException("gallery_sns의 {$index}번째 요소에 필수 키(type, url)가 누락되었습니다.");
+            }
+        }
     }
 
     // 스키마 검증: 배열, 최대 4개, 각 아이템 {type,url}
@@ -402,10 +422,10 @@ class GalleryModel {
         if (!in_array($type, $allowedTypes, true)) {
             throw new \InvalidArgumentException("허용되지 않는 type: {$type}");
         }
-        // URL 대략 검증(선택)
-        if (!preg_match('#^https?://#i', $url)) {
-            throw new \InvalidArgumentException("gallery_sns[$i].url 형식이 잘못되었습니다.");
-        }
+        // // URL 대략 검증(선택)
+        // if (!preg_match('#^https?://#i', $url)) {
+        //     throw new \InvalidArgumentException("gallery_sns[$i].url 형식이 잘못되었습니다.");
+        // }
         $out[] = ['type'=>$type, 'url'=>$url];
     }
 

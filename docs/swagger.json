@@ -387,6 +387,9 @@
                                     },
                                     "art_year": {
                                         "type": "string"
+                                    },
+                                    "gallery_phone": {
+                                        "type": "string"
                                     }
                                 },
                                 "type": "object"
@@ -424,90 +427,6 @@
                     },
                     "404": {
                         "description": "Not Found"
-                    }
-                }
-            },
-            "post": {
-                "tags": [
-                    "Art"
-                ],
-                "summary": "[PATCH with method spoofing] 작품 일부 수정 (multipart/form-data 업로드)",
-                "description": "[매우중요] multipart/form-data로 파일과 함께 요청 시, 실제로는 POST 메서드를 사용하고 본문에 `_method=PATCH` 필드를 포함해야 합니다. (Method Spoofing)",
-                "operationId": "91ba28b082118a3f3c7cd1f605b26010",
-                "parameters": [
-                    {
-                        "name": "id",
-                        "in": "path",
-                        "required": true,
-                        "schema": {
-                            "type": "integer"
-                        }
-                    }
-                ],
-                "requestBody": {
-                    "description": "수정할 필드만 전송합니다. (부분 업데이트)",
-                    "required": true,
-                    "content": {
-                        "multipart/form-data": {
-                            "schema": {
-                                "required": [
-                                    "_method"
-                                ],
-                                "properties": {
-                                    "_method": {
-                                        "description": "Method Spoofing을 위해 'PATCH' 값을 전송해야 합니다.",
-                                        "type": "string",
-                                        "enum": [
-                                            "PATCH"
-                                        ],
-                                        "example": "PATCH"
-                                    },
-                                    "image": {
-                                        "description": "새 이미지(선택)",
-                                        "type": "string",
-                                        "format": "binary",
-                                        "nullable": true
-                                    },
-                                    "artist_id": {
-                                        "type": "integer",
-                                        "nullable": true
-                                    },
-                                    "art_title": {
-                                        "type": "string",
-                                        "nullable": true
-                                    },
-                                    "art_description": {
-                                        "type": "string",
-                                        "nullable": true
-                                    },
-                                    "art_docent": {
-                                        "type": "string",
-                                        "nullable": true
-                                    },
-                                    "art_material": {
-                                        "type": "string",
-                                        "nullable": true
-                                    },
-                                    "art_size": {
-                                        "type": "string",
-                                        "nullable": true
-                                    },
-                                    "art_year": {
-                                        "type": "string",
-                                        "nullable": true
-                                    }
-                                },
-                                "type": "object"
-                            }
-                        }
-                    }
-                },
-                "responses": {
-                    "200": {
-                        "description": "Updated"
-                    },
-                    "404": {
-                        "description": "Art not found"
                     }
                 }
             },

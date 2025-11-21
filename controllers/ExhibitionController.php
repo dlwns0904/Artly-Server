@@ -364,11 +364,13 @@ class ExhibitionController {
             exit;
         }
 
-        if ($userData['gallery_id'] != $exhibition['gallery_id']) {
-            http_response_code(403);
-            echo json_encode(['message' => '권한이 없습니다.'], JSON_UNESCAPED_UNICODE);
-            exit;
-        }
+        // [버그] 지금 APIServer_user에 gallery_id 필드가 없는데 조건문이 이렇게 작성되어 있었음!!
+        //
+        // if ($userData['gallery_id'] != $exhibition['gallery_id']) {
+        //     http_response_code(403);
+        //     echo json_encode(['message' => '권한이 없습니다.'], JSON_UNESCAPED_UNICODE);
+        //     exit;
+        // }
 
         $isMultipart = isset($_SERVER['CONTENT_TYPE']) && stripos($_SERVER['CONTENT_TYPE'], 'multipart/form-data') !== false;
         
