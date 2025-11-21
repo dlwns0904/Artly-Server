@@ -328,33 +328,58 @@ class GalleryController {
     }
 
     /**
-     * @OA\Get(
-     *     path="/api/galleries",
-     *     summary="갤러리 목록 조회",
-     *     tags={"Gallery"},
-     *     security={{"bearerAuth":{}}},
-     *     @OA\Parameter(name="regions", in="query", description="여러개이면 콤마로 구분", @OA\Schema(type="string")),
-     *     @OA\Parameter(name="type", in="query", description="미술관/박물관/갤러리/복합문화공간/대안공간", @OA\Schema(type="string")),
-     *     @OA\Parameter(name="latitude", in="query", @OA\Schema(type="number", format="float")),
-     *     @OA\Parameter(name="longitude", in="query", @OA\Schema(type="number", format="float")),
-     *     @OA\Parameter(name="distance", in="query", @OA\Schema(type="integer")),
-     *     @OA\Parameter(name="search", in="query", description="gallery_name 검색", @OA\Schema(type="string")),
-     *     @OA\Parameter(name="liked_only", in="query", description="내가 좋아요한 갤러리만 (true/false)", @OA\Schema(type="boolean")),
-     *     @OA\Response(response=200, description="조회 성공")
-     * )
-     */
-    public function getGalleryList() {
-        $decoded = $this->auth->decodeToken();
-        $user_id = $decoded && isset($decoded->user_id) ? $decoded->user_id : null;
-        $likedOnly = $_GET['liked_only'] ?? null;
-        $likedOnlyBool = filter_var($likedOnly, FILTER_VALIDATE_BOOLEAN);
+ * @OA\Get(
+ *     path="/api/galleries",
+ *     summary="갤러리 목록 조회",
+ *     tags={"Gallery"},
+ *     security={{"bearerAuth":{}}},
+ *     @OA\Parameter(name="regions", in="query", description="여러개이면 콤마로 구분", @OA\Schema(type="string")),
+ *     @OA\Parameter(name="type", in="query", description="미술관/박물관/갤러리/복합문화공간/대안공간", @OA\Schema(type="string")),
+ *     @OA\Parameter(name="latitude", in="query", @OA\Schema(type="number", format="float")),
+ *     @OA\Parameter(name="longitude", in="query", @OA\Schema(type="number", format="float")),
+ *     @OA\Parameter(name="distance", in="query", @OA\Schema(type="integer")),
+ *     @OA\Parameter(name="search", in="query", description="gallery_name 검색", @OA\Schema(type="string")),
+ *     @OA\Parameter(name="liked_only", in="query", description="내가 좋아요한 갤러리만 (true/false)", @OA\Schema(type="boolean")),
+ *     @OA\Parameter(name="view", in="query", description="console 일 경우, 자신의 갤러리만 조회", @OA\Schema(type="string")),
+ *     @OA\Response(response=200, description="조회 성공")
+ * )
+ */
+public function getGalleryList() {
+    $decoded = $this->auth->decodeToken();
+    $user_id = $decoded && isset($decoded->user_id) ? $decoded->user_id : null;
+    $role    = $decoded && isset($decoded->role) ? $decoded->role : null;
 
-        if ($likedOnlyBool && !$user_id) {
-            http_response_code(401);
-            echo json_encode(['message' => '로그인 후 사용 가능합니다.']);
+    $likedOnly     = $_GET['liked_only'] ?? null;
+    $likedOnlyBool = filter_var($likedOnly, FILTER_VALIDATE_BOOLEAN);
+
+    // 🔁 기존 liked_only 로직 그대로 유지
+    if ($likedOnlyBool && !$user_id) {
+        http_response_code(401);
+        header('Content-Type: application/json');
+        echo json_encode(['message' => '로그인 후 사용 가능합니다.'], JSON_UNESCAPED_UNICODE);
+        return;
+    }
+
+    // 🔥 추가: 콘솔 모드 여부
+    $view      = $_GET['view'] ?? null;
+    $isConsole = ($view === 'console');
+
+    if ($isConsole) {
+        // 콘솔 모드는 admin + 로그인 필수
+        if ($role !== 'admin' || !$user_id) {
+            http_response_code(403);
+            header('Content-Type: application/json');
+            echo json_encode(['message' => '콘솔 전용 API입니다.'], JSON_UNESCAPED_UNICODE);
             return;
         }
 
+        // 🔥 콘솔용: 자신이 관리하는 갤러리만
+        $filters = [
+            'admin_only' => true,   // 모델에서 이 플래그를 보고 user_id 필터링
+            'user_id'    => $user_id,
+        ];
+    } else {
+        // ✅ 기존 사용자/메인 페이지 로직 100% 유지
         $filters = [
             'regions'   => $_GET['regions'] ?? null,
             'type'      => $_GET['type'] ?? null,
@@ -365,44 +390,45 @@ class GalleryController {
             'liked_only'=> $likedOnly,
             'user_id'   => $user_id
         ];
-
-        $galleries = $this->model->getGalleries($filters);
-        if (empty($galleries)) {
-            header('Content-Type: application/json');
-            echo json_encode([], JSON_UNESCAPED_UNICODE);
-            return;
-        }
-
-        // 이미지 경로 절대 URL로 변환
-        foreach ($galleries as &$g) {
-            if (isset($g['gallery_image'])) {
-                $g['gallery_image'] = $this->toAbsoluteUrl($g['gallery_image']);
-            }
-        }
-        unset($g);
-
-        // 전시 연결
-        foreach ($galleries as &$gallery) {
-            $galleryId = is_array($gallery) ? $gallery['id'] : (is_object($gallery) ? $gallery->id : null);
-            if (!$galleryId) continue;
-
-            $exhibitionFilters = ['gallery_id' => $galleryId];
-            $exhibitions = $this->exhibitionModel->getExhibitions($exhibitionFilters);
-            $exhibitionCount = count($exhibitions);
-
-            if (is_array($gallery)) {
-                $gallery['exhibitions'] = $exhibitions;
-                $gallery['exhibition_count'] = $exhibitionCount;
-            } else {
-                $gallery->exhibitions = $exhibitions;
-                $gallery->exhibition_count = $exhibitionCount;
-            }
-        }
-        unset($gallery);
-
-        header('Content-Type: application/json');
-        echo json_encode($galleries, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
     }
+
+    $galleries = $this->model->getGalleries($filters);
+    if (empty($galleries)) {
+        header('Content-Type: application/json');
+        echo json_encode([], JSON_UNESCAPED_UNICODE);
+        return;
+    }
+
+    // 이미지 경로 절대 URL 변환 (기존 그대로)
+    foreach ($galleries as &$g) {
+        if (isset($g['gallery_image'])) {
+            $g['gallery_image'] = $this->toAbsoluteUrl($g['gallery_image']);
+        }
+    }
+    unset($g);
+
+    // 전시 연결 (기존 그대로)
+    foreach ($galleries as &$gallery) {
+        $galleryId = is_array($gallery) ? $gallery['id'] : (is_object($gallery) ? $gallery->id : null);
+        if (!$galleryId) continue;
+
+        $exhibitionFilters = ['gallery_id' => $galleryId];
+        $exhibitions = $this->exhibitionModel->getExhibitions($exhibitionFilters);
+        $exhibitionCount = count($exhibitions);
+
+        if (is_array($gallery)) {
+            $gallery['exhibitions'] = $exhibitions;
+            $gallery['exhibition_count'] = $exhibitionCount;
+        } else {
+            $gallery->exhibitions = $exhibitions;
+            $gallery->exhibition_count = $exhibitionCount;
+        }
+    }
+    unset($gallery);
+
+    header('Content-Type: application/json');
+    echo json_encode($galleries, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
+}
 
     /**
      * @OA\Get(
