@@ -220,7 +220,7 @@ elseif ($requestMethod === 'GET' && preg_match('#^/api/leaflet/(\d+)$#', $reques
     (new \Controllers\UploadController())->getLeafletById($m[1]);
     exit;
 }
-elseif ($requestMethod === 'GET' && preg_match('#^/api/leaflet/user/(\d+)$#', $requestUri, $m)) {
+elseif ($requestMethod === 'GET' && preg_match('#^/api/leaflet/create_user/(\d+)$#', $requestUri, $m)) {
     (new \Controllers\UploadController())->getLeafletsByUserId($m[1]);
     exit;
 }
