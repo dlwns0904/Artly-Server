@@ -268,33 +268,52 @@ class ArtController {
     }
 
     /**
-     * @OA\Put(
-     *   path="/api/arts/{id}",
-     *   summary="작품 수정 (multipart/form-data 업로드)",
-     *   tags={"Art"},
-     *   @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
-     *   @OA\RequestBody(
-     *     required=false,
-     *     @OA\MediaType(
-     *       mediaType="multipart/form-data",
-     *       @OA\Schema(
-     *         @OA\Property(property="image", type="string", format="binary", description="새 이미지(선택)"),
-     *         @OA\Property(property="artist_id", type="integer"),
-     *         @OA\Property(property="art_title", type="string"),
-     *         @OA\Property(property="art_description", type="string"),
-     *         @OA\Property(property="art_docent", type="string"),
-     *         @OA\Property(property="art_material", type="string"),
-     *         @OA\Property(property="art_size", type="string"),
-     *         @OA\Property(property="art_year", type="string"),
-     *         @OA\Property(property="gallery_phone", type="string")
-     *       )
-     *     )
-     *   ),
-     *   @OA\Response(response=200, description="Updated")
+     * @OA\Post(
+     * path="/api/arts/{id}",
+     * summary="작품 수정 (Method Spoofing: POST + _method=PATCH)",
+     * description="PHP의 multipart/form-data 제약으로 인해 POST로 전송하되, Body에 _method='PATCH'를 포함해야 합니다.",
+     * tags={"Art"},
+     * security={{"bearerAuth":{}}},
+     * @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="integer")),
+     * @OA\RequestBody(
+     * required=true,
+     * @OA\MediaType(
+     * mediaType="multipart/form-data",
+     * @OA\Schema(
+     * @OA\Property(
+     * property="_method",
+     * type="string",
+     * enum={"PATCH"},
+     * default="PATCH",
+     * description="Method Spoofing을 위한 필수 필드"
+     * ),
+     * @OA\Property(property="image", type="string", format="binary", description="변경할 이미지 (선택)"),
+     * @OA\Property(property="artist_id", type="integer", description="작가 ID (선택)"),
+     * @OA\Property(property="art_title", type="string", description="작품명 (선택)"),
+     * @OA\Property(property="art_description", type="string", description="작품 설명 (선택)"),
+     * @OA\Property(property="art_docent", type="string", description="도슨트 텍스트 (선택)"),
+     * @OA\Property(property="art_material", type="string", description="재료 (선택)"),
+     * @OA\Property(property="art_size", type="string", description="크기 (선택)"),
+     * @OA\Property(property="art_year", type="string", description="제작년도 (선택)"),
+     * @OA\Property(property="gallery_phone", type="string", description="갤러리 전화번호 (선택)")
+     * )
+     * )
+     * ),
+     * @OA\Response(
+     * response=200,
+     * description="수정 성공",
+     * @OA\JsonContent(
+     * @OA\Property(property="message", type="string", example="Art updated successfully"),
+     * @OA\Property(property="data", type="object")
+     * )
+     * ),
+     * @OA\Response(response=404, description="작품을 찾을 수 없음"),
+     * @OA\Response(response=400, description="잘못된 요청")
      * )
      */
     public function updateArt($id) {
         try {
+            // 1. 존재 여부 확인
             $exists = $this->model->getById($id);
             if (!$exists) {
                 http_response_code(404);
@@ -302,35 +321,68 @@ class ArtController {
                 return;
             }
 
-            // 파일이 올라온 경우에만 새로 저장 (없으면 기존 이미지 유지)
-            $newRelativeImagePath = $this->storeUploadedImage('image');
+            // 2. 이미지 처리 (Method Spoofing이므로 $_FILES 사용 가능)
+            // 파일이 전송된 경우에만 업로드를 시도합니다.
+            $newRelativeImagePath = null;
+            if (isset($_FILES['image']) && $_FILES['image']['error'] === UPLOAD_ERR_OK) {
+                // storeUploadedImage 함수는 내부적으로 move_uploaded_file 등을 수행
+                $newRelativeImagePath = $this->storeUploadedImage('image');
+            }
 
-            // 부분수정: 제공된 필드만 반영
+            // 3. 부분 수정 데이터 구성
+            // Method Spoofing이어도 PHP는 $_POST에 데이터를 담아줍니다.
             $data = [];
-            if (!empty($_POST)) {
-                foreach (['artist_id','art_title','art_description','art_docent','art_material','art_size','art_year'] as $k) {
-                    if (array_key_exists($k, $_POST)) {
-                        $data[$k] = $_POST[$k];
-                    }
+            
+            // 수정 가능한 필드 목록
+            $fields = [
+                'artist_id', 
+                'art_title', 
+                'art_description', 
+                'art_docent', 
+                'art_material', 
+                'art_size', 
+                'art_year', 
+                'gallery_phone'
+            ];
+
+            foreach ($fields as $key) {
+                // 클라이언트가 해당 필드를 보냈을 때만 업데이트 (Partial Update)
+                // 빈 문자열("")도 수정 의도로 볼 수 있으므로 isset이나 array_key_exists 사용 권장
+                if (array_key_exists($key, $_POST)) {
+                    $data[$key] = $_POST[$key];
                 }
             }
+
+            // 새 이미지가 있다면 데이터에 추가
             if ($newRelativeImagePath !== null) {
                 $data['art_image'] = $newRelativeImagePath;
             }
 
+            // 4. 변경할 내용이 없으면 바로 리턴 (선택 사항)
+            if (empty($data)) {
+                http_response_code(200);
+                echo json_encode(['message' => 'No changes provided', 'data' => $exists]);
+                return;
+            }
+
+            // 5. DB 업데이트
             $success = $this->model->update($id, $data);
+
             if ($success) {
+                // 업데이트된 최신 데이터 조회
                 $updatedArt = $this->model->getById($id);
+                // 이미지 URL 절대경로 변환
                 $updatedArt['art_image'] = $this->buildMediaUrl($updatedArt['art_image'] ?? null);
+
                 header('Content-Type: application/json');
                 echo json_encode([
                     'message' => 'Art updated successfully',
                     'data'    => $updatedArt
                 ], JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
             } else {
-                http_response_code(400);
-                echo json_encode(['message' => 'Art not found or update failed']);
+                throw new \RuntimeException('Update failed on database layer');
             }
+
         } catch (\Throwable $e) {
             http_response_code(400);
             header('Content-Type: application/json');
