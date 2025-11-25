@@ -430,12 +430,13 @@
                     }
                 }
             },
-            "put": {
+            "post": {
                 "tags": [
                     "Art"
                 ],
-                "summary": "작품 수정 (multipart/form-data 업로드)",
-                "operationId": "846fb90712902a8ffff9237b91f0aa66",
+                "summary": "작품 수정 (Method Spoofing: POST + _method=PATCH)",
+                "description": "PHP의 multipart/form-data 제약으로 인해 POST로 전송하되, Body에 _method='PATCH'를 포함해야 합니다.",
+                "operationId": "91ba28b082118a3f3c7cd1f605b26010",
                 "parameters": [
                     {
                         "name": "id",
@@ -447,38 +448,54 @@
                     }
                 ],
                 "requestBody": {
-                    "required": false,
+                    "required": true,
                     "content": {
                         "multipart/form-data": {
                             "schema": {
                                 "properties": {
+                                    "_method": {
+                                        "description": "Method Spoofing을 위한 필수 필드",
+                                        "type": "string",
+                                        "default": "PATCH",
+                                        "enum": [
+                                            "PATCH"
+                                        ]
+                                    },
                                     "image": {
-                                        "description": "새 이미지(선택)",
+                                        "description": "변경할 이미지 (선택)",
                                         "type": "string",
                                         "format": "binary"
                                     },
                                     "artist_id": {
+                                        "description": "작가 ID (선택)",
                                         "type": "integer"
                                     },
                                     "art_title": {
+                                        "description": "작품명 (선택)",
                                         "type": "string"
                                     },
                                     "art_description": {
+                                        "description": "작품 설명 (선택)",
                                         "type": "string"
                                     },
                                     "art_docent": {
+                                        "description": "도슨트 텍스트 (선택)",
                                         "type": "string"
                                     },
                                     "art_material": {
+                                        "description": "재료 (선택)",
                                         "type": "string"
                                     },
                                     "art_size": {
+                                        "description": "크기 (선택)",
                                         "type": "string"
                                     },
                                     "art_year": {
+                                        "description": "제작년도 (선택)",
                                         "type": "string"
                                     },
                                     "gallery_phone": {
+                                        "description": "갤러리 전화번호 (선택)",
                                         "type": "string"
                                     }
                                 },
@@ -489,9 +506,36 @@
                 },
                 "responses": {
                     "200": {
-                        "description": "Updated"
+                        "description": "수정 성공",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Art updated successfully"
+                                        },
+                                        "data": {
+                                            "type": "object"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "작품을 찾을 수 없음"
+                    },
+                    "400": {
+                        "description": "잘못된 요청"
                     }
-                }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
             },
             "delete": {
                 "tags": [

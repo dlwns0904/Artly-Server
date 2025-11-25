@@ -383,23 +383,29 @@ class UploadController {
             // 3. 모델에 넘길 데이터 준비
             $updateData = [];
 
-            if (isset($inputData['title'])) {
+            // isset() 대신 array_key_exists() 사용
+            if (array_key_exists('title', $inputData) && trim($inputData['title']) !== '') {
+                // null이든 빈 문자열("")이든 그대로 업데이트 데이터에 포함
                 $updateData['title'] = $inputData['title'];
             }
 
-            if (isset($inputData['category'])) {
+            if (array_key_exists('category', $inputData) && trim($inputData['category']) !== '') {
                 $updateData['category'] = $inputData['category'];
             }
 
-            // 이미지 URL 배열 처리
-            if (isset($inputData['image_urls'])) {
-                if (is_array($inputData['image_urls'])) {
+            // 이미지 URL 처리
+            if (array_key_exists('image_urls', $inputData) && !empty($inputData['image_urls'])) {
+                $imgUrls = $inputData['image_urls'];
+
+                if (is_array($imgUrls)) {
+                    // 빈 배열 []이 들어오면 "[]" 문자열로 변환됨 (DB에 JSON형태로 저장 시 적절)
                     $updateData['image_urls'] = json_encode(
-                        $inputData['image_urls'], 
+                        $imgUrls, 
                         JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
                     );
                 } else {
-                    $updateData['image_urls'] = $inputData['image_urls'];
+                    // null이나 다른 값이 들어올 경우
+                    $updateData['image_urls'] = $imgUrls;
                 }
             }
 
