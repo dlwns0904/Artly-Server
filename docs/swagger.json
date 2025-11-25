@@ -430,6 +430,69 @@
                     }
                 }
             },
+            "put": {
+                "tags": [
+                    "Art"
+                ],
+                "summary": "작품 수정 (multipart/form-data 업로드)",
+                "operationId": "846fb90712902a8ffff9237b91f0aa66",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": false,
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "properties": {
+                                    "image": {
+                                        "description": "새 이미지(선택)",
+                                        "type": "string",
+                                        "format": "binary"
+                                    },
+                                    "artist_id": {
+                                        "type": "integer"
+                                    },
+                                    "art_title": {
+                                        "type": "string"
+                                    },
+                                    "art_description": {
+                                        "type": "string"
+                                    },
+                                    "art_docent": {
+                                        "type": "string"
+                                    },
+                                    "art_material": {
+                                        "type": "string"
+                                    },
+                                    "art_size": {
+                                        "type": "string"
+                                    },
+                                    "art_year": {
+                                        "type": "string"
+                                    },
+                                    "gallery_phone": {
+                                        "type": "string"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Updated"
+                    }
+                }
+            },
             "delete": {
                 "tags": [
                     "Art"
@@ -515,13 +578,17 @@
                                                 "type": "integer",
                                                 "example": 1
                                             },
-                                            "name": {
+                                            "artist_name": {
                                                 "type": "string",
                                                 "example": "김길동"
                                             },
-                                            "field": {
+                                            "artist_category": {
                                                 "type": "string",
                                                 "example": "회화"
+                                            },
+                                            "artist_image": {
+                                                "type": "string",
+                                                "example": "https://... 또는 /media/artist/..."
                                             }
                                         },
                                         "type": "object"
@@ -566,19 +633,19 @@
                                         "id": {
                                             "type": "integer"
                                         },
-                                        "name": {
+                                        "artist_name": {
                                             "type": "string"
                                         },
-                                        "field": {
+                                        "artist_category": {
                                             "type": "string"
                                         },
-                                        "imageUrl": {
+                                        "artist_image": {
                                             "type": "string"
                                         },
-                                        "nation": {
+                                        "artist_nation": {
                                             "type": "string"
                                         },
-                                        "description": {
+                                        "artist_description": {
                                             "type": "string"
                                         }
                                     },
@@ -616,7 +683,7 @@
                 "requestBody": {
                     "required": true,
                     "content": {
-                        "application/json": {
+                        "multipart/form-data": {
                             "schema": {
                                 "properties": {
                                     "artist_name": {
@@ -625,13 +692,17 @@
                                     "artist_category": {
                                         "type": "string"
                                     },
-                                    "artist_image": {
-                                        "type": "string"
-                                    },
                                     "artist_nation": {
                                         "type": "string"
                                     },
                                     "artist_description": {
+                                        "type": "string"
+                                    },
+                                    "artist_image": {
+                                        "type": "string",
+                                        "format": "binary"
+                                    },
+                                    "artist_image_url": {
                                         "type": "string"
                                     }
                                 },
@@ -679,7 +750,7 @@
                 "requestBody": {
                     "required": true,
                     "content": {
-                        "application/json": {
+                        "multipart/form-data": {
                             "schema": {
                                 "properties": {
                                     "artist_name": {
@@ -688,13 +759,18 @@
                                     "artist_category": {
                                         "type": "string"
                                     },
-                                    "artist_image": {
-                                        "type": "string"
-                                    },
                                     "artist_nation": {
                                         "type": "string"
                                     },
                                     "artist_description": {
+                                        "type": "string"
+                                    },
+                                    "artist_image": {
+                                        "type": "string",
+                                        "format": "binary"
+                                    },
+                                    "artist_image_url": {
+                                        "description": "외부 이미지 URL",
                                         "type": "string"
                                     }
                                 },
@@ -2062,6 +2138,14 @@
                         "description": "내가 좋아요한 갤러리만 (true/false)",
                         "schema": {
                             "type": "boolean"
+                        }
+                    },
+                    {
+                        "name": "userId",
+                        "in": "query",
+                        "description": "해당 userId가 소유한 갤러리만 조회 (admin 또는 본인만)",
+                        "schema": {
+                            "type": "integer"
                         }
                     }
                 ],
@@ -3715,6 +3799,334 @@
                 ]
             }
         },
+        "/api/leaflet": {
+            "post": {
+                "tags": [
+                    "Leaflet"
+                ],
+                "summary": "리플렛 생성 (이미지 업로드 포함)",
+                "operationId": "abb970d51b335f449cbbe5ccbe31caf1",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "properties": {
+                                    "image[]": {
+                                        "description": "업로드할 이미지 파일들 (다중 선택 가능)",
+                                        "type": "array",
+                                        "items": {
+                                            "type": "string",
+                                            "format": "binary"
+                                        }
+                                    },
+                                    "title": {
+                                        "description": "리플렛 제목",
+                                        "type": "string"
+                                    },
+                                    "category": {
+                                        "description": "카테고리 (기본: image)",
+                                        "type": "string",
+                                        "example": "artCatalog"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "리플렛 생성 성공",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "id": {
+                                            "type": "integer",
+                                            "example": 1
+                                        },
+                                        "title": {
+                                            "type": "string",
+                                            "example": "전시회 리플렛"
+                                        },
+                                        "image_urls": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "string"
+                                            }
+                                        },
+                                        "create_user_id": {
+                                            "type": "integer",
+                                            "example": 10
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "요청 오류"
+                    },
+                    "401": {
+                        "description": "인증 필요"
+                    },
+                    "500": {
+                        "description": "서버 오류"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/leaflet/{id}": {
+            "get": {
+                "tags": [
+                    "Leaflet"
+                ],
+                "summary": "리플렛 상세 조회 (ID 기준)",
+                "operationId": "5049cb5d68301fb6505d02878efab9f9",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "조회할 리플렛 ID",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "성공",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "id": {
+                                            "type": "integer",
+                                            "example": 1
+                                        },
+                                        "title": {
+                                            "type": "string",
+                                            "example": "전시회 리플렛"
+                                        },
+                                        "image_urls": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "string"
+                                            }
+                                        },
+                                        "category": {
+                                            "type": "string",
+                                            "example": "artCatalog"
+                                        },
+                                        "create_user_id": {
+                                            "type": "integer",
+                                            "example": 10
+                                        },
+                                        "create_dtm": {
+                                            "type": "string",
+                                            "format": "date-time"
+                                        },
+                                        "update_dtm": {
+                                            "type": "string",
+                                            "format": "date-time"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "리플렛을 찾을 수 없음"
+                    },
+                    "500": {
+                        "description": "서버 오류"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "patch": {
+                "tags": [
+                    "Leaflet"
+                ],
+                "summary": "리플렛 정보 부분 수정 (PATCH)",
+                "description": "보낸 필드만 수정됩니다. (예: 제목만 보내면 제목만 수정됨) 아무것도 안 보내도 되긴 합니다. 중단조건 설정 되어 있삼",
+                "operationId": "30a3a15fb6f8c53d6fb806206827f10e",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "수정할 리플렛 ID",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "description": "수정할 필드만 JSON으로 전송",
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "properties": {
+                                    "title": {
+                                        "description": "변경할 제목 (선택)",
+                                        "type": "string",
+                                        "example": "수정된 제목"
+                                    },
+                                    "category": {
+                                        "description": "변경할 카테고리 (선택)",
+                                        "type": "string",
+                                        "example": "artCatalog"
+                                    },
+                                    "image_urls": {
+                                        "description": "이미지 순서 변경 시 URL 전체 배열 재전송 (선택)",
+                                        "type": "array",
+                                        "items": {
+                                            "type": "string"
+                                        },
+                                        "example": [
+                                            "http://host/media/img1.jpg",
+                                            "http://host/media/img2.jpg"
+                                        ]
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "수정 성공 (수정된 리플렛 정보 반환)",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "id": {
+                                            "type": "integer"
+                                        },
+                                        "title": {
+                                            "type": "string"
+                                        },
+                                        "image_urls": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "string"
+                                            }
+                                        },
+                                        "category": {
+                                            "type": "string"
+                                        },
+                                        "update_dtm": {
+                                            "type": "string",
+                                            "format": "date-time"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "잘못된 요청"
+                    },
+                    "401": {
+                        "description": "인증 필요"
+                    },
+                    "403": {
+                        "description": "권한 없음"
+                    },
+                    "500": {
+                        "description": "서버 오류"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/leaflet/create_user/{userId}": {
+            "get": {
+                "tags": [
+                    "Leaflet"
+                ],
+                "summary": "특정 사용자가 업로드한 리플렛 목록 조회",
+                "operationId": "3241c9945ee8a8e6b940309e925c9569",
+                "parameters": [
+                    {
+                        "name": "userId",
+                        "in": "path",
+                        "description": "작성자(User) ID",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "성공 (배열 반환)",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {
+                                        "properties": {
+                                            "id": {
+                                                "type": "integer",
+                                                "example": 1
+                                            },
+                                            "title": {
+                                                "type": "string",
+                                                "example": "전시회 리플렛"
+                                            },
+                                            "image_urls": {
+                                                "type": "array",
+                                                "items": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "category": {
+                                                "type": "string"
+                                            },
+                                            "create_dtm": {
+                                                "type": "string",
+                                                "format": "date-time"
+                                            }
+                                        },
+                                        "type": "object"
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "서버 오류"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
         "/api/users/me": {
             "get": {
                 "tags": [
@@ -4458,6 +4870,10 @@
         {
             "name": "Upload",
             "description": "Upload"
+        },
+        {
+            "name": "Leaflet",
+            "description": "Leaflet"
         }
     ]
 }

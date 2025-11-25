@@ -3,14 +3,15 @@ namespace Controllers;
 
 use Middlewares\AuthMiddleware;
 use OpenApi\Annotations as OA;
+use Models\LeafletModel;
 
-class UploadController
-{
+class UploadController {
     private $auth;
+    private $leafletModel;
 
-    public function __construct()
-    {
+    public function __construct() {
         $this->auth = new AuthMiddleware();
+        $this->leafletModel = new LeafletModel();
     }
 
     /** 절대 URL 빌더 */
@@ -105,85 +106,441 @@ class UploadController
      *   @OA\Response(response=500, description="서버 오류")
      * )
      */
-    public function uploadImage()
-    {
-    // 인증 X면 삭제
-    $this->auth->authenticate();
+    public function uploadImage() {
+        // 인증 X면 삭제
+        $this->auth->authenticate();
 
-    header('Content-Type: application/json; charset=utf-8');
+        header('Content-Type: application/json; charset=utf-8');
 
-    if (empty($_SERVER['CONTENT_TYPE']) || stripos($_SERVER['CONTENT_TYPE'], 'multipart/form-data') === false) {
-        http_response_code(400);
-        echo json_encode(['message' => 'multipart/form-data 로 업로드해주세요.'], JSON_UNESCAPED_UNICODE);
-        return;
-    }
-
-    if (empty($_FILES['image'])) {
-        http_response_code(400);
-        echo json_encode(['message' => 'image 파일이 필요합니다. (form field name: image 또는 image[])'], JSON_UNESCAPED_UNICODE);
-        return;
-    }
-
-    // ✅ category 파라미터 처리 (기본: image, artCatalog면 artCatalog)
-    $category = $_POST['category'] ?? null;
-    $subdir   = ($category === 'artCatalog') ? 'artCatalog' : 'image';
-
-    try {
-        $fileField = $_FILES['image'];
-
-        // 1) 여러 장 업로드: image[] 로 들어온 경우 (name이 배열)
-        if (is_array($fileField['name'])) {
-            $urls = [];
-
-            $count = count($fileField['name']);
-            for ($i = 0; $i < $count; $i++) {
-                // 각 파일을 saveUploadedImage 형식에 맞게 재구성
-                $file = [
-                    'name'     => $fileField['name'][$i],
-                    'type'     => $fileField['type'][$i],
-                    'tmp_name' => $fileField['tmp_name'][$i],
-                    'error'    => $fileField['error'][$i],
-                    'size'     => $fileField['size'][$i],
-                ];
-
-                if ($file['error'] !== UPLOAD_ERR_OK) {
-                    // 하나라도 실패하면 건너뛰거나, 여기서 에러 리턴할지 정책 선택 가능
-                    // 일단은 건너뛰는 예시:
-                    continue;
-                }
-
-                $relative = $this->saveUploadedImage($file, $subdir);
-                $absolute = $this->toAbsoluteUrl($relative);
-                $urls[]   = $absolute;
-            }
-
-            if (empty($urls)) {
-                http_response_code(500);
-                echo json_encode(['message' => '업로드에 성공한 이미지가 없습니다.'], JSON_UNESCAPED_UNICODE);
-                return;
-            }
-
-            // ✅ 여러 장일 때 응답: urls 배열
-            echo json_encode(['urls' => $urls], JSON_UNESCAPED_UNICODE);
+        if (empty($_SERVER['CONTENT_TYPE']) || stripos($_SERVER['CONTENT_TYPE'], 'multipart/form-data') === false) {
+            http_response_code(400);
+            echo json_encode(['message' => 'multipart/form-data 로 업로드해주세요.'], JSON_UNESCAPED_UNICODE);
             return;
         }
 
-        // 2) 단일 업로드: 기존 방식 (image 하나)
-        $relative = $this->saveUploadedImage($fileField, $subdir);
-        $absolute = $this->toAbsoluteUrl($relative);
+        if (empty($_FILES['image'])) {
+            http_response_code(400);
+            echo json_encode(['message' => 'image 파일이 필요합니다. (form field name: image 또는 image[])'], JSON_UNESCAPED_UNICODE);
+            return;
+        }
 
-        // 단일일 때는 기존과 호환되게 url만 반환
-        echo json_encode(['url' => $absolute], JSON_UNESCAPED_UNICODE);
+        // ✅ category 파라미터 처리 (기본: image, artCatalog면 artCatalog)
+        $category = $_POST['category'] ?? null;
+        $subdir   = ($category === 'artCatalog') ? 'artCatalog' : 'image';
 
-    } catch (\InvalidArgumentException $e) {
-        http_response_code(415);
-        echo json_encode(['message' => $e->getMessage()], JSON_UNESCAPED_UNICODE);
-    } catch (\RuntimeException $e) {
-        http_response_code(500);
-        echo json_encode(['message' => $e->getMessage()], JSON_UNESCAPED_UNICODE);
-    } catch (\Throwable $e) {
-        http_response_code(500);
-        echo json_encode(['message' => '알 수 없는 오류가 발생했습니다.'], JSON_UNESCAPED_UNICODE);
+        try {
+            $fileField = $_FILES['image'];
+
+            // 1) 여러 장 업로드: image[] 로 들어온 경우 (name이 배열)
+            if (is_array($fileField['name'])) {
+                $urls = [];
+
+                $count = count($fileField['name']);
+                for ($i = 0; $i < $count; $i++) {
+                    // 각 파일을 saveUploadedImage 형식에 맞게 재구성
+                    $file = [
+                        'name'     => $fileField['name'][$i],
+                        'type'     => $fileField['type'][$i],
+                        'tmp_name' => $fileField['tmp_name'][$i],
+                        'error'    => $fileField['error'][$i],
+                        'size'     => $fileField['size'][$i],
+                    ];
+
+                    if ($file['error'] !== UPLOAD_ERR_OK) {
+                        // 하나라도 실패하면 건너뛰거나, 여기서 에러 리턴할지 정책 선택 가능
+                        // 일단은 건너뛰는 예시:
+                        continue;
+                    }
+
+                    $relative = $this->saveUploadedImage($file, $subdir);
+                    $absolute = $this->toAbsoluteUrl($relative);
+                    $urls[]   = $absolute;
+                }
+
+                if (empty($urls)) {
+                    http_response_code(500);
+                    echo json_encode(['message' => '업로드에 성공한 이미지가 없습니다.'], JSON_UNESCAPED_UNICODE);
+                    return;
+                }
+
+                // ✅ 여러 장일 때 응답: urls 배열
+                echo json_encode(['urls' => $urls], JSON_UNESCAPED_UNICODE);
+                return;
+            }
+
+            // 2) 단일 업로드: 기존 방식 (image 하나)
+            $relative = $this->saveUploadedImage($fileField, $subdir);
+            $absolute = $this->toAbsoluteUrl($relative);
+
+            // 단일일 때는 기존과 호환되게 url만 반환
+            echo json_encode(['url' => $absolute], JSON_UNESCAPED_UNICODE);
+
+        } catch (\InvalidArgumentException $e) {
+            http_response_code(415);
+            echo json_encode(['message' => $e->getMessage()], JSON_UNESCAPED_UNICODE);
+        } catch (\RuntimeException $e) {
+            http_response_code(500);
+            echo json_encode(['message' => $e->getMessage()], JSON_UNESCAPED_UNICODE);
+        } catch (\Throwable $e) {
+            http_response_code(500);
+            echo json_encode(['message' => '알 수 없는 오류가 발생했습니다.'], JSON_UNESCAPED_UNICODE);
+        }
     }
-}
+
+    /**
+     * @OA\Post(
+     * path="/api/leaflet",
+     * summary="리플렛 생성 (이미지 업로드 포함)",
+     * tags={"Leaflet"},
+     * security={{"bearerAuth":{}}},
+     * @OA\RequestBody(
+     * required=true,
+     * @OA\MediaType(
+     * mediaType="multipart/form-data",
+     * @OA\Schema(
+     * type="object",
+     * @OA\Property(
+     * property="image[]", type="array",
+     * @OA\Items(type="string", format="binary"),
+     * description="업로드할 이미지 파일들 (다중 선택 가능)"
+     * ),
+     * @OA\Property(
+     * property="title", type="string", description="리플렛 제목"
+     * ),
+     * @OA\Property(
+     * property="category", type="string",
+     * description="카테고리 (기본: image)", example="artCatalog"
+     * )
+     * )
+     * )
+     * ),
+     * @OA\Response(
+     * response=200,
+     * description="리플렛 생성 성공",
+     * @OA\JsonContent(
+     * @OA\Property(property="id", type="integer", example=1),
+     * @OA\Property(property="title", type="string", example="전시회 리플렛"),
+     * @OA\Property(property="image_urls", type="array", @OA\Items(type="string")),
+     * @OA\Property(property="create_user_id", type="integer", example=10)
+     * )
+     * ),
+     * @OA\Response(response=400, description="요청 오류"),
+     * @OA\Response(response=401, description="인증 필요"),
+     * @OA\Response(response=500, description="서버 오류")
+     * )
+     */
+    public function createLeaflet() {
+        // 1. 인증 및 사용자 ID 확보
+        $this->auth->requireAdmin();
+        $userId = $this->auth->getUserId(); 
+
+        header('Content-Type: application/json; charset=utf-8');
+
+        // 2. 요청 유효성 검사
+        if (empty($_SERVER['CONTENT_TYPE']) || stripos($_SERVER['CONTENT_TYPE'], 'multipart/form-data') === false) {
+            http_response_code(400);
+            echo json_encode(['message' => 'multipart/form-data 로 업로드해주세요.'], JSON_UNESCAPED_UNICODE);
+            return;
+        }
+
+        if (empty($_FILES['image'])) {
+            http_response_code(400);
+            echo json_encode(['message' => 'image 파일이 필요합니다.'], JSON_UNESCAPED_UNICODE);
+            return;
+        }
+
+        // 3. 파라미터 받기
+        $title    = $_POST['title'] ?? null;
+        $category = $_POST['category'] ?? 'image';
+        $subdir   = ($category === 'artCatalog') ? 'artCatalog' : 'image';
+
+        $uploadedUrls = [];
+
+        try {
+            $fileField = $_FILES['image'];
+
+            // 4. 이미지 업로드 처리
+            if (is_array($fileField['name'])) {
+                $count = count($fileField['name']);
+                for ($i = 0; $i < $count; $i++) {
+                    $file = [
+                        'name'     => $fileField['name'][$i],
+                        'type'     => $fileField['type'][$i],
+                        'tmp_name' => $fileField['tmp_name'][$i],
+                        'error'    => $fileField['error'][$i],
+                        'size'     => $fileField['size'][$i],
+                    ];
+
+                    if ($file['error'] !== UPLOAD_ERR_OK) continue;
+
+                    $relative = $this->saveUploadedImage($file, $subdir);
+                    $uploadedUrls[] = $this->toAbsoluteUrl($relative);
+                }
+            } else {
+                $relative = $this->saveUploadedImage($fileField, $subdir);
+                $uploadedUrls[] = $this->toAbsoluteUrl($relative);
+            }
+
+            if (empty($uploadedUrls)) {
+                throw new \RuntimeException('업로드된 파일이 없습니다.');
+            }
+
+            // 5. 모델 호출 데이터 준비
+            $jsonUrls = json_encode($uploadedUrls, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+
+            $leafletData = [
+                'user_id'    => $userId,
+                'title'      => $title,
+                'image_urls' => $jsonUrls,
+                'category'   => $category
+            ];
+
+            // 6. DB 저장 (★ 수정됨: $this->leafletModel 사용)
+            $newLeaflet = $this->leafletModel->create($leafletData);
+
+            // 7. 최종 응답
+            echo json_encode($newLeaflet, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+
+        } catch (\InvalidArgumentException $e) {
+            http_response_code(415);
+            echo json_encode(['message' => $e->getMessage()], JSON_UNESCAPED_UNICODE);
+        } catch (\RuntimeException $e) {
+            http_response_code(500);
+            echo json_encode(['message' => $e->getMessage()], JSON_UNESCAPED_UNICODE);
+        } catch (\Throwable $e) {
+            http_response_code(500);
+            echo json_encode(['message' => '서버 오류가 발생했습니다: ' . $e->getMessage()], JSON_UNESCAPED_UNICODE);
+        }
+    }
+
+    /**
+     * @OA\Patch(
+     * path="/api/leaflet/{id}",
+     * summary="리플렛 정보 부분 수정 (PATCH)",
+     * description="보낸 필드만 수정됩니다. (예: 제목만 보내면 제목만 수정됨) 아무것도 안 보내도 되긴 합니다. 중단조건 설정 되어 있삼",
+     * tags={"Leaflet"},
+     * security={{"bearerAuth":{}}},
+     * @OA\Parameter(
+     * name="id",
+     * in="path",
+     * required=true,
+     * description="수정할 리플렛 ID",
+     * @OA\Schema(type="integer")
+     * ),
+     * @OA\RequestBody(
+     * required=true,
+     * description="수정할 필드만 JSON으로 전송",
+     * @OA\JsonContent(
+     * type="object",
+     * @OA\Property(property="title", type="string", description="변경할 제목 (선택)", example="수정된 제목"),
+     * @OA\Property(property="category", type="string", description="변경할 카테고리 (선택)", example="artCatalog"),
+     * @OA\Property(
+     * property="image_urls",
+     * type="array",
+     * description="이미지 순서 변경 시 URL 전체 배열 재전송 (선택)",
+     * @OA\Items(type="string"),
+     * example={"http://host/media/img1.jpg", "http://host/media/img2.jpg"}
+     * )
+     * )
+     * ),
+     * @OA\Response(
+     * response=200,
+     * description="수정 성공 (수정된 리플렛 정보 반환)",
+     * @OA\JsonContent(
+     * @OA\Property(property="id", type="integer"),
+     * @OA\Property(property="title", type="string"),
+     * @OA\Property(property="image_urls", type="array", @OA\Items(type="string")),
+     * @OA\Property(property="category", type="string"),
+     * @OA\Property(property="update_dtm", type="string", format="date-time")
+     * )
+     * ),
+     * @OA\Response(response=400, description="잘못된 요청"),
+     * @OA\Response(response=401, description="인증 필요"),
+     * @OA\Response(response=403, description="권한 없음"),
+     * @OA\Response(response=500, description="서버 오류")
+     * )
+     */
+    public function updateLeaflet($id) {
+        // 1. 인증 확인
+        $this->auth->authenticate();
+        // $currentUserId = $this->auth->getUserId(); // 권한 체크용
+
+        header('Content-Type: application/json; charset=utf-8');
+
+        // 2. 요청 Body (JSON) 읽기
+        $inputData = json_decode(file_get_contents('php://input'), true);
+        
+        // JSON 파싱 에러 체크
+        if (json_last_error() !== JSON_ERROR_NONE && !empty(file_get_contents('php://input'))) {
+            http_response_code(400);
+            echo json_encode(['message' => '잘못된 JSON 형식입니다.'], JSON_UNESCAPED_UNICODE);
+            return;
+        }
+
+        try {
+            // (권한 체크 로직 위치)
+
+            // 3. 모델에 넘길 데이터 준비
+            $updateData = [];
+
+            if (isset($inputData['title'])) {
+                $updateData['title'] = $inputData['title'];
+            }
+
+            if (isset($inputData['category'])) {
+                $updateData['category'] = $inputData['category'];
+            }
+
+            // 이미지 URL 배열 처리
+            if (isset($inputData['image_urls'])) {
+                if (is_array($inputData['image_urls'])) {
+                    $updateData['image_urls'] = json_encode(
+                        $inputData['image_urls'], 
+                        JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES
+                    );
+                } else {
+                    $updateData['image_urls'] = $inputData['image_urls'];
+                }
+            }
+
+            // 수정할 내용이 없으면 에러 혹은 현재 상태 반환
+            if (empty($updateData)) {
+                // PATCH에서는 body가 비어도 에러보다는 '변경 없음'으로 200 OK를 주는 경우도 있지만,
+                // 명시적으로 무엇을 바꿀지 요청하지 않았으므로 400을 주는 것도 일반적입니다.
+                http_response_code(400);
+                echo json_encode(['message' => '수정할 데이터가 없습니다.'], JSON_UNESCAPED_UNICODE);
+                return;
+            }
+
+            // 4. 모델 업데이트 호출
+            $updatedLeaflet = $this->leafletModel->update($id, $updateData);
+
+            if (!$updatedLeaflet) {
+                http_response_code(404);
+                echo json_encode(['message' => '업데이트 실패 (존재하지 않는 ID)'], JSON_UNESCAPED_UNICODE);
+                return;
+            }
+
+            // 5. 결과 반환
+            echo json_encode($updatedLeaflet, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+
+        } catch (\Throwable $e) {
+            http_response_code(500);
+            echo json_encode(['message' => '서버 오류: ' . $e->getMessage()], JSON_UNESCAPED_UNICODE);
+        }
+    }
+
+    /**
+     * @OA\Get(
+     * path="/api/leaflet/{id}",
+     * summary="리플렛 상세 조회 (ID 기준)",
+     * tags={"Leaflet"},
+     * security={{"bearerAuth":{}}},
+     * @OA\Parameter(
+     * name="id",
+     * in="path",
+     * required=true,
+     * description="조회할 리플렛 ID",
+     * @OA\Schema(type="integer")
+     * ),
+     * @OA\Response(
+     * response=200,
+     * description="성공",
+     * @OA\JsonContent(
+     * @OA\Property(property="id", type="integer", example=1),
+     * @OA\Property(property="title", type="string", example="전시회 리플렛"),
+     * @OA\Property(property="image_urls", type="array", @OA\Items(type="string")),
+     * @OA\Property(property="category", type="string", example="artCatalog"),
+     * @OA\Property(property="create_user_id", type="integer", example=10),
+     * @OA\Property(property="create_dtm", type="string", format="date-time"),
+     * @OA\Property(property="update_dtm", type="string", format="date-time")
+     * )
+     * ),
+     * @OA\Response(response=404, description="리플렛을 찾을 수 없음"),
+     * @OA\Response(response=500, description="서버 오류")
+     * )
+     */
+    public function getLeafletById($id) {
+        header('Content-Type: application/json; charset=utf-8');
+
+        try {
+            $leaflet = $this->leafletModel->getById($id);
+
+            if (!$leaflet) {
+                http_response_code(404);
+                echo json_encode(['message' => '해당 리플렛을 찾을 수 없습니다.'], JSON_UNESCAPED_UNICODE);
+                return;
+            }
+
+            // DB에 저장된 JSON 문자열을 PHP 배열로 변환
+            if (isset($leaflet['image_urls']) && is_string($leaflet['image_urls'])) {
+                $leaflet['image_urls'] = json_decode($leaflet['image_urls'], true);
+            }
+
+            echo json_encode($leaflet, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+
+        } catch (\Throwable $e) {
+            http_response_code(500);
+            echo json_encode(['message' => '서버 오류: ' . $e->getMessage()], JSON_UNESCAPED_UNICODE);
+        }
+    }
+
+    /**
+     * @OA\Get(
+     * path="/api/leaflet/create_user/{userId}",
+     * summary="특정 사용자가 업로드한 리플렛 목록 조회",
+     * tags={"Leaflet"},
+     * security={{"bearerAuth":{}}},
+     * @OA\Parameter(
+     * name="userId",
+     * in="path",
+     * required=true,
+     * description="작성자(User) ID",
+     * @OA\Schema(type="integer")
+     * ),
+     * @OA\Response(
+     * response=200,
+     * description="성공 (배열 반환)",
+     * @OA\JsonContent(
+     * type="array",
+     * @OA\Items(
+     * @OA\Property(property="id", type="integer", example=1),
+     * @OA\Property(property="title", type="string", example="전시회 리플렛"),
+     * @OA\Property(property="image_urls", type="array", @OA\Items(type="string")),
+     * @OA\Property(property="category", type="string"),
+     * @OA\Property(property="create_dtm", type="string", format="date-time")
+     * )
+     * )
+     * ),
+     * @OA\Response(response=500, description="서버 오류")
+     * )
+     */
+    public function getLeafletsByUserId($userId) {
+        header('Content-Type: application/json; charset=utf-8');
+
+        try {
+            $leaflets = $this->leafletModel->getByCreateUserId($userId);
+
+            // 목록이 비어있어도 빈 배열 [] 리턴 (404 아님)
+            if (empty($leaflets)) {
+                echo json_encode([], JSON_UNESCAPED_UNICODE);
+                return;
+            }
+
+            // 목록 전체를 순회하며 image_urls JSON 디코딩 처리
+            foreach ($leaflets as &$item) {
+                if (isset($item['image_urls']) && is_string($item['image_urls'])) {
+                    $item['image_urls'] = json_decode($item['image_urls'], true);
+                }
+            }
+            // 참조 해제 (foreach 참조 사용 시 권장)
+            unset($item);
+
+            echo json_encode($leaflets, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+
+        } catch (\Throwable $e) {
+            http_response_code(500);
+            echo json_encode(['message' => '서버 오류: ' . $e->getMessage()], JSON_UNESCAPED_UNICODE);
+        }
+    }
 }
