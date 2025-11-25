@@ -207,6 +207,25 @@ elseif ($requestMethod === 'POST' && $requestUri === '/api/upload/image') {
 }
 
 
+/* ───────────────────────── Leaflet ───────────────────────── */
+elseif ($requestMethod === 'POST' && $requestUri === '/api/leaflet') {
+    (new \Controllers\UploadController())->createLeaflet();
+    exit;
+}
+elseif ($requestMethod === 'PATCH' && preg_match('#^/api/leaflet/(\d+)$#', $requestUri, $m)) {
+    (new \Controllers\UploadController())->updateLeaflet($m[1]);
+    exit;
+}
+elseif ($requestMethod === 'GET' && preg_match('#^/api/leaflet/(\d+)$#', $requestUri, $m)) {
+    (new \Controllers\UploadController())->getLeafletById($m[1]);
+    exit;
+}
+elseif ($requestMethod === 'GET' && preg_match('#^/api/leaflet/create_user/(\d+)$#', $requestUri, $m)) {
+    (new \Controllers\UploadController())->getLeafletsByUserId($m[1]);
+    exit;
+}
+
+
 /* ───────────────────────── Like ───────────────────────── */
 
 elseif ($requestMethod === 'POST' && $requestUri === '/api/likes') {
