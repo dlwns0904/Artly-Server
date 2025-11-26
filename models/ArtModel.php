@@ -61,7 +61,7 @@ class ArtModel {
                  create_dtm, update_dtm)
             VALUES
                 (:image, :artist_id, :title, :description, :docent,
-                 :material, :size, :year,
+                 :material, :size, :year, :gallery_phone,
                  NOW(), NOW())
         ");
 

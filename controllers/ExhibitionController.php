@@ -304,10 +304,10 @@ class ExhibitionController {
      * type="object",
      * required={"_method"},
      * @OA\Property(
-     * property="_method", 
-     * type="string", 
-     * enum={"PATCH"}, 
-     * example="PATCH", 
+     * property="_method",
+     * type="string",
+     * enum={"PATCH"},
+     * example="PATCH",
      * description="Method Spoofing을 위해 'PATCH' 값을 전송해야 합니다."
      * ),
      * @OA\Property(property="exhibition_title", type="string", nullable=true),
@@ -373,8 +373,8 @@ class ExhibitionController {
         // }
 
         $isMultipart = isset($_SERVER['CONTENT_TYPE']) && stripos($_SERVER['CONTENT_TYPE'], 'multipart/form-data') !== false;
-        
-        $data = []; 
+
+        $data = [];
 
         if ($isMultipart) {
             if (isset($_POST['exhibition_title']) && $_POST['exhibition_title'] !== '') {
@@ -426,10 +426,10 @@ class ExhibitionController {
             $jsonData = json_decode(file_get_contents('php://input'), true) ?? [];
             $data = array_merge($data, $jsonData);
         }
-        
+
         // $data가 비어있으면 업데이트할 필요가 없음
         if (empty($data)) {
-            http_response_code(200); 
+            http_response_code(200);
             echo json_encode(['message' => 'No fields to update', 'data' => $exhibition], JSON_UNESCAPED_UNICODE);
             exit;
         }
