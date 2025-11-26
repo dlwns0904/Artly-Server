@@ -216,7 +216,7 @@ elseif ($requestMethod === 'PATCH' && preg_match('#^/api/leaflet/(\d+)$#', $requ
     (new \Controllers\UploadController())->updateLeaflet($m[1]);
     exit;
 }
-elseif ($requestMethod === 'GET' && $path === '/api/leaflet') {
+elseif ($requestMethod === 'GET' && $requestUri === '/api/leaflet') {
     (new \Controllers\UploadController())->getLeaflet();
     exit;
 }
