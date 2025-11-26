@@ -223,6 +223,9 @@ elseif ($requestMethod === 'GET' && preg_match('#^/api/leaflet/(\d+)$#', $reques
 elseif ($requestMethod === 'GET' && preg_match('#^/api/leaflet/create_user/(\d+)$#', $requestUri, $m)) {
     (new \Controllers\UploadController())->getLeafletsByUserId($m[1]);
     exit;
+}elseif ($requestMethod === 'DELETE' && preg_match('#^/api/leaflet/(\d+)$#', $requestUri, $m)) {
+    (new \Controllers\UploadController())->deleteLeaflet($m[1]);
+    exit;
 }
 
 

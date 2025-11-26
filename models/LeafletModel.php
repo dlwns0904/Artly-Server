@@ -76,4 +76,9 @@ class LeafletModel {
 
         return $this->getById($id);
     }
+
+    public function delete($id) {
+        $stmt = $this->pdo->prepare("DELETE FROM APIServer_leaflet WHERE id = :id");
+        return $stmt->execute([':id' => $id]);
+    }
 }

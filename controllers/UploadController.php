@@ -549,4 +549,95 @@ class UploadController {
             echo json_encode(['message' => '서버 오류: ' . $e->getMessage()], JSON_UNESCAPED_UNICODE);
         }
     }
+
+
+    /**
+     * @OA\Delete(
+     * path="/api/leaflet/{id}",
+     * summary="리플렛 삭제",
+     * description="ID를 기준으로 특정 리플렛 정보를 삭제합니다.",
+     * tags={"Leaflet"},
+     * security={{"bearerAuth":{}}},
+     * @OA\Parameter(
+     * name="id",
+     * in="path",
+     * required=true,
+     * description="삭제할 리플렛 ID",
+     * @OA\Schema(type="integer")
+     * ),
+     * @OA\Response(
+     * response=200,
+     * description="삭제 성공",
+     * @OA\JsonContent(
+     * type="object",
+     * @OA\Property(property="message", type="string", example="리플렛이 성공적으로 삭제되었습니다."),
+     * @OA\Property(property="id", type="integer", example=15)
+     * )
+     * ),
+     * @OA\Response(
+     * response=404,
+     * description="삭제 실패 (존재하지 않는 ID)",
+     * @OA\JsonContent(
+     * type="object",
+     * @OA\Property(property="message", type="string", example="삭제 실패: 존재하지 않는 리플렛 ID입니다.")
+     * )
+     * ),
+     * @OA\Response(
+     * response=500,
+     * description="서버 오류",
+     * @OA\JsonContent(
+     * type="object",
+     * @OA\Property(property="message", type="string", example="서버 오류: ...")
+     * )
+     * )
+     * )
+     */
+    public function deleteLeaflet($id) {
+        // 1. CORS 및 Method 확인 (라우터에서 처리 안 했을 경우 안전장치)
+        if ($_SERVER['REQUEST_METHOD'] !== 'DELETE') {
+            http_response_code(405); // Method Not Allowed
+            header('Content-Type: application/json; charset=utf-8');
+            echo json_encode(['message' => '허용되지 않은 메서드입니다. (DELETE만 가능)'], JSON_UNESCAPED_UNICODE);
+            return;
+        }
+
+        // 2. 인증 확인
+        try {
+            $this->auth->authenticate();
+        } catch (\Exception $e) {
+            // auth 클래스 내부에서 에러를 던진다면 여기서 잡아서 처리
+            http_response_code(401);
+            echo json_encode(['message' => '인증 실패'], JSON_UNESCAPED_UNICODE);
+            return;
+        }
+
+        header('Content-Type: application/json; charset=utf-8');
+
+        // ID 유효성 검사 (빈 값 체크)
+        if (empty($id)) {
+            http_response_code(400);
+            echo json_encode(['message' => '삭제할 ID가 전달되지 않았습니다.'], JSON_UNESCAPED_UNICODE);
+            return;
+        }
+
+        try {
+            // 3. 모델 삭제 호출 (앞서 만든 delete 함수 사용)
+            $isDeleted = $this->leafletModel->delete($id);
+
+            if ($isDeleted) {
+                // 삭제 성공
+                http_response_code(200); 
+                echo json_encode(['message' => '리플렛이 성공적으로 삭제되었습니다.', 'id' => $id], JSON_UNESCAPED_UNICODE);
+            } else {
+                // 삭제 실패 (ID가 없거나 이미 삭제됨)
+                http_response_code(404);
+                echo json_encode(['message' => '삭제 실패: 존재하지 않는 리플렛 ID입니다.'], JSON_UNESCAPED_UNICODE);
+            }
+
+        } catch (\Throwable $e) {
+            // 서버 내부 오류
+            http_response_code(500);
+            echo json_encode(['message' => '서버 오류: ' . $e->getMessage()], JSON_UNESCAPED_UNICODE);
+        }
+    }
 }
