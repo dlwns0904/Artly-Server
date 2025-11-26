@@ -3844,6 +3844,130 @@
             }
         },
         "/api/leaflet": {
+            "get": {
+                "tags": [
+                    "Leaflet"
+                ],
+                "summary": "리플렛 조회 (통합)",
+                "description": "파라미터 조합에 따라 3가지 방식으로 조회합니다. 각 조합 중 하나만 사용하시기 바랍니다! <br>1. <b>id</b>: 특정 리플렛 1개 상세 조회 (Object 반환)<br>2. <b>user_id</b>: 특정 작성자(관리자)가 쓴 리플렛 목록 조회 (Array 반환)<br>3. <b>category + category_id</b>: 특정 카테고리 ID에 속한 목록 조회 (예:10번 갤러리의 리플랫은 category:galleryCategory + categoryId:10) (Array 반환)",
+                "operationId": "a11aa345feedca5494e3c5afbda2998d",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "query",
+                        "description": "리플렛 고유 ID (단일 조회용)",
+                        "required": false,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "creator_user_id",
+                        "in": "query",
+                        "description": "작성자 User ID (목록 조회용)",
+                        "required": false,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "category",
+                        "in": "query",
+                        "description": "카테고리 명 (artCategory 등)",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "artCategory",
+                                "exhibitionCategory",
+                                "galleryCategory",
+                                "image"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "category_id",
+                        "in": "query",
+                        "description": "카테고리 참조 ID",
+                        "required": false,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "성공 (검색 조건에 따라 Object 또는 Array 반환)",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "oneOf": [
+                                        {
+                                            "description": "단일 조회 결과",
+                                            "properties": {
+                                                "id": {
+                                                    "type": "integer"
+                                                },
+                                                "title": {
+                                                    "type": "string"
+                                                },
+                                                "image_urls": {
+                                                    "type": "array",
+                                                    "items": {
+                                                        "type": "string"
+                                                    }
+                                                },
+                                                "category": {
+                                                    "type": "string"
+                                                },
+                                                "category_id": {
+                                                    "type": "integer"
+                                                }
+                                            },
+                                            "type": "object"
+                                        },
+                                        {
+                                            "description": "목록 조회 결과",
+                                            "type": "array",
+                                            "items": {
+                                                "properties": {
+                                                    "id": {
+                                                        "type": "integer"
+                                                    },
+                                                    "title": {
+                                                        "type": "string"
+                                                    },
+                                                    "image_urls": {
+                                                        "type": "array",
+                                                        "items": {
+                                                            "type": "string"
+                                                        }
+                                                    }
+                                                },
+                                                "type": "object"
+                                            }
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "description": "파라미터 오류"
+                    },
+                    "404": {
+                        "description": "데이터 없음 (단일 조회 시)"
+                    },
+                    "500": {
+                        "description": "서버 오류"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
             "post": {
                 "tags": [
                     "Leaflet"
@@ -3869,9 +3993,20 @@
                                         "type": "string"
                                     },
                                     "category": {
-                                        "description": "카테고리 (기본: image)",
+                                        "description": "어떤 카테고리의 리플렛인지 (4개 중 택1, 기본값: image)",
                                         "type": "string",
-                                        "example": "artCatalog"
+                                        "default": "image",
+                                        "enum": [
+                                            "artCategory",
+                                            "exhibitionCategory",
+                                            "galleryCategory",
+                                            "image"
+                                        ]
+                                    },
+                                    "categoryId": {
+                                        "description": "어떤 것의 리플렛인지: 예를들어 10번 리플렛이라면 -> 10)",
+                                        "type": "integer",
+                                        "example": 10
                                     }
                                 },
                                 "type": "object"
@@ -3903,6 +4038,14 @@
                                         "create_user_id": {
                                             "type": "integer",
                                             "example": 10
+                                        },
+                                        "category_id": {
+                                            "type": "integer",
+                                            "example": 10
+                                        },
+                                        "category": {
+                                            "type": "string",
+                                            "example": "artCategory"
                                         }
                                     },
                                     "type": "object"
@@ -3911,7 +4054,7 @@
                         }
                     },
                     "400": {
-                        "description": "요청 오류"
+                        "description": "잘못된 요청 (카테고리 오류 등)"
                     },
                     "401": {
                         "description": "인증 필요"
@@ -3928,17 +4071,18 @@
             }
         },
         "/api/leaflet/{id}": {
-            "get": {
+            "delete": {
                 "tags": [
                     "Leaflet"
                 ],
-                "summary": "리플렛 상세 조회 (ID 기준)",
-                "operationId": "5049cb5d68301fb6505d02878efab9f9",
+                "summary": "리플렛 삭제",
+                "description": "ID를 기준으로 특정 리플렛 정보를 삭제합니다.",
+                "operationId": "5685b44d8f0a5bf51116206ae657a67f",
                 "parameters": [
                     {
                         "name": "id",
                         "in": "path",
-                        "description": "조회할 리플렛 ID",
+                        "description": "삭제할 리플렛 ID",
                         "required": true,
                         "schema": {
                             "type": "integer"
@@ -3947,40 +4091,18 @@
                 ],
                 "responses": {
                     "200": {
-                        "description": "성공",
+                        "description": "삭제 성공",
                         "content": {
                             "application/json": {
                                 "schema": {
                                     "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "리플렛이 성공적으로 삭제되었습니다."
+                                        },
                                         "id": {
                                             "type": "integer",
-                                            "example": 1
-                                        },
-                                        "title": {
-                                            "type": "string",
-                                            "example": "전시회 리플렛"
-                                        },
-                                        "image_urls": {
-                                            "type": "array",
-                                            "items": {
-                                                "type": "string"
-                                            }
-                                        },
-                                        "category": {
-                                            "type": "string",
-                                            "example": "artCatalog"
-                                        },
-                                        "create_user_id": {
-                                            "type": "integer",
-                                            "example": 10
-                                        },
-                                        "create_dtm": {
-                                            "type": "string",
-                                            "format": "date-time"
-                                        },
-                                        "update_dtm": {
-                                            "type": "string",
-                                            "format": "date-time"
+                                            "example": 15
                                         }
                                     },
                                     "type": "object"
@@ -3989,10 +4111,36 @@
                         }
                     },
                     "404": {
-                        "description": "리플렛을 찾을 수 없음"
+                        "description": "삭제 실패 (존재하지 않는 ID)",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "삭제 실패: 존재하지 않는 리플렛 ID입니다."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
                     },
                     "500": {
-                        "description": "서버 오류"
+                        "description": "서버 오류",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "서버 오류: ..."
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
                     }
                 },
                 "security": [
@@ -4093,72 +4241,6 @@
                     },
                     "403": {
                         "description": "권한 없음"
-                    },
-                    "500": {
-                        "description": "서버 오류"
-                    }
-                },
-                "security": [
-                    {
-                        "bearerAuth": []
-                    }
-                ]
-            }
-        },
-        "/api/leaflet/create_user/{userId}": {
-            "get": {
-                "tags": [
-                    "Leaflet"
-                ],
-                "summary": "특정 사용자가 업로드한 리플렛 목록 조회",
-                "operationId": "3241c9945ee8a8e6b940309e925c9569",
-                "parameters": [
-                    {
-                        "name": "userId",
-                        "in": "path",
-                        "description": "작성자(User) ID",
-                        "required": true,
-                        "schema": {
-                            "type": "integer"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "성공 (배열 반환)",
-                        "content": {
-                            "application/json": {
-                                "schema": {
-                                    "type": "array",
-                                    "items": {
-                                        "properties": {
-                                            "id": {
-                                                "type": "integer",
-                                                "example": 1
-                                            },
-                                            "title": {
-                                                "type": "string",
-                                                "example": "전시회 리플렛"
-                                            },
-                                            "image_urls": {
-                                                "type": "array",
-                                                "items": {
-                                                    "type": "string"
-                                                }
-                                            },
-                                            "category": {
-                                                "type": "string"
-                                            },
-                                            "create_dtm": {
-                                                "type": "string",
-                                                "format": "date-time"
-                                            }
-                                        },
-                                        "type": "object"
-                                    }
-                                }
-                            }
-                        }
                     },
                     "500": {
                         "description": "서버 오류"
