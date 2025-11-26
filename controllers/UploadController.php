@@ -69,6 +69,23 @@ class UploadController {
         return $rel . '/' . $name; // 예: media/image/2025/11/abcd1234.png
     }
 
+    /** (헬퍼 함수) 목록 데이터를 받아서 이미지 디코딩 후 JSON 응답 */
+    private function sendListResponse($leaflets) {
+        if (empty($leaflets)) {
+            echo json_encode([], JSON_UNESCAPED_UNICODE);
+            return;
+        }
+
+        foreach ($leaflets as &$item) {
+            if (isset($item['image_urls']) && is_string($item['image_urls'])) {
+                $item['image_urls'] = json_decode($item['image_urls'], true);
+            }
+        }
+        unset($item);
+
+        echo json_encode($leaflets, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    }
+
     /**
      * @OA\Post(
      *   path="/api/upload/image",
@@ -126,7 +143,13 @@ class UploadController {
 
         // ✅ category 파라미터 처리 (기본: image, artCatalog면 artCatalog)
         $category = $_POST['category'] ?? null;
-        $subdir   = ($category === 'artCatalog') ? 'artCatalog' : 'image';
+        $allowedCategories = ['artCategory', 'exhibitionCategory', 'galleryCategory'];
+
+        if (in_array($category, $allowedCategories)) {
+            $subdir = $category;
+        } else {
+            $subdir = 'image';
+        }
 
         try {
             $fileField = $_FILES['image'];
@@ -209,7 +232,13 @@ class UploadController {
      * ),
      * @OA\Property(
      * property="category", type="string",
-     * description="카테고리 (기본: image)", example="artCatalog"
+     * description="어떤 카테고리의 리플렛인지 (4개 중 택1, 기본값: image)",
+     * enum={"artCategory", "exhibitionCategory", "galleryCategory", "image"},
+     * default="image"
+     * ),
+     * @OA\Property(
+     * property="categoryId", type="integer",
+     * description="어떤 것의 리플렛인지: 예를들어 10번 리플렛이라면 -> 10)", example=10
      * )
      * )
      * )
@@ -221,10 +250,12 @@ class UploadController {
      * @OA\Property(property="id", type="integer", example=1),
      * @OA\Property(property="title", type="string", example="전시회 리플렛"),
      * @OA\Property(property="image_urls", type="array", @OA\Items(type="string")),
-     * @OA\Property(property="create_user_id", type="integer", example=10)
+     * @OA\Property(property="create_user_id", type="integer", example=10),
+     * @OA\Property(property="category_id", type="integer", example=10),
+     * @OA\Property(property="category", type="string", example="artCategory")
      * )
      * ),
-     * @OA\Response(response=400, description="요청 오류"),
+     * @OA\Response(response=400, description="잘못된 요청 (카테고리 오류 등)"),
      * @OA\Response(response=401, description="인증 필요"),
      * @OA\Response(response=500, description="서버 오류")
      * )
@@ -236,7 +267,7 @@ class UploadController {
 
         header('Content-Type: application/json; charset=utf-8');
 
-        // 2. 요청 유효성 검사
+        // 2. 요청 유효성 검사 (파일)
         if (empty($_SERVER['CONTENT_TYPE']) || stripos($_SERVER['CONTENT_TYPE'], 'multipart/form-data') === false) {
             http_response_code(400);
             echo json_encode(['message' => 'multipart/form-data 로 업로드해주세요.'], JSON_UNESCAPED_UNICODE);
@@ -249,10 +280,29 @@ class UploadController {
             return;
         }
 
-        // 3. 파라미터 받기
-        $title    = $_POST['title'] ?? null;
-        $category = $_POST['category'] ?? 'image';
-        $subdir   = ($category === 'artCatalog') ? 'artCatalog' : 'image';
+        // 3. 파라미터 받기 및 카테고리 검증
+        $title      = $_POST['title'] ?? null;
+        $categoryId = $_POST['categoryId'] ?? null;
+        
+        // 입력받은 카테고리 (없으면 기본값 'image')
+        $categoryInput = $_POST['category'] ?? 'image';
+
+        // ✅ 허용된 카테고리 리스트 (image 포함)
+        $validCategories = ['artCategory', 'exhibitionCategory', 'galleryCategory', 'image'];
+
+        // ✅ 유효성 검사: 목록에 없으면 400 에러 리턴
+        if (!in_array($categoryInput, $validCategories)) {
+            http_response_code(400);
+            echo json_encode([
+                'message' => '유효하지 않은 카테고리입니다.',
+                'allowed' => $validCategories
+            ], JSON_UNESCAPED_UNICODE);
+            return;
+        }
+
+        // 검증 통과했으므로 변수 할당
+        $category = $categoryInput;
+        $subdir   = $category; // 폴더명도 카테고리명과 동일하게 사용
 
         $uploadedUrls = [];
 
@@ -289,13 +339,14 @@ class UploadController {
             $jsonUrls = json_encode($uploadedUrls, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 
             $leafletData = [
-                'user_id'    => $userId,
-                'title'      => $title,
-                'image_urls' => $jsonUrls,
-                'category'   => $category
+                'user_id'     => $userId,
+                'title'       => $title,
+                'image_urls'  => $jsonUrls,
+                'category'    => $category,
+                'category_id' => $categoryId
             ];
 
-            // 6. DB 저장 (★ 수정됨: $this->leafletModel 사용)
+            // 6. DB 저장
             $newLeaflet = $this->leafletModel->create($leafletData);
 
             // 7. 최종 응답
@@ -438,52 +489,121 @@ class UploadController {
 
     /**
      * @OA\Get(
-     * path="/api/leaflet/{id}",
-     * summary="리플렛 상세 조회 (ID 기준)",
+     * path="/api/leaflet",
+     * summary="리플렛 조회 (통합)",
+     * description="파라미터 조합에 따라 3가지 방식으로 조회합니다. 각 조합 중 하나만 사용하시기 바랍니다! <br>1. <b>id</b>: 특정 리플렛 1개 상세 조회 (Object 반환)<br>2. <b>user_id</b>: 특정 작성자(관리자)가 쓴 리플렛 목록 조회 (Array 반환)<br>3. <b>category + category_id</b>: 특정 카테고리 ID에 속한 목록 조회 (예:10번 갤러리의 리플랫은 category:galleryCategory + categoryId:10) (Array 반환)",
      * tags={"Leaflet"},
      * security={{"bearerAuth":{}}},
      * @OA\Parameter(
-     * name="id",
-     * in="path",
-     * required=true,
-     * description="조회할 리플렛 ID",
-     * @OA\Schema(type="integer")
+     * name="id", in="query", description="리플렛 고유 ID (단일 조회용)", required=false, @OA\Schema(type="integer")
+     * ),
+     * @OA\Parameter(
+     * name="creator_user_id", in="query", description="작성자 User ID (목록 조회용)", required=false, @OA\Schema(type="integer")
+     * ),
+     * @OA\Parameter(
+     * name="category", in="query", description="카테고리 명 (artCategory 등)", required=false,
+     * @OA\Schema(type="string", enum={"artCategory", "exhibitionCategory", "galleryCategory", "image"})
+     * ),
+     * @OA\Parameter(
+     * name="category_id", in="query", description="카테고리 참조 ID", required=false, @OA\Schema(type="integer")
      * ),
      * @OA\Response(
      * response=200,
-     * description="성공",
+     * description="성공 (검색 조건에 따라 Object 또는 Array 반환)",
      * @OA\JsonContent(
-     * @OA\Property(property="id", type="integer", example=1),
-     * @OA\Property(property="title", type="string", example="전시회 리플렛"),
+     * oneOf={
+     * @OA\Schema(type="object", description="단일 조회 결과",
+     * @OA\Property(property="id", type="integer"),
+     * @OA\Property(property="title", type="string"),
      * @OA\Property(property="image_urls", type="array", @OA\Items(type="string")),
-     * @OA\Property(property="category", type="string", example="artCatalog"),
-     * @OA\Property(property="create_user_id", type="integer", example=10),
-     * @OA\Property(property="create_dtm", type="string", format="date-time"),
-     * @OA\Property(property="update_dtm", type="string", format="date-time")
+     * @OA\Property(property="category", type="string"),
+     * @OA\Property(property="category_id", type="integer")
+     * ),
+     * @OA\Schema(type="array", description="목록 조회 결과",
+     * @OA\Items(
+     * @OA\Property(property="id", type="integer"),
+     * @OA\Property(property="title", type="string"),
+     * @OA\Property(property="image_urls", type="array", @OA\Items(type="string"))
+     * )
+     * )
+     * }
      * )
      * ),
-     * @OA\Response(response=404, description="리플렛을 찾을 수 없음"),
+     * @OA\Response(response=400, description="파라미터 오류"),
+     * @OA\Response(response=404, description="데이터 없음 (단일 조회 시)"),
      * @OA\Response(response=500, description="서버 오류")
      * )
      */
-    public function getLeafletById($id) {
+    public function getLeaflet() {
         header('Content-Type: application/json; charset=utf-8');
 
-        try {
-            $leaflet = $this->leafletModel->getById($id);
+        // 파라미터 수신
+        $id         = $_GET['id'] ?? null;
+        $userId     = $_GET['creator_user_id'] ?? null;
+        $category   = $_GET['category'] ?? null;
+        $categoryId = $_GET['category_id'] ?? null;
 
-            if (!$leaflet) {
-                http_response_code(404);
-                echo json_encode(['message' => '해당 리플렛을 찾을 수 없습니다.'], JSON_UNESCAPED_UNICODE);
+        // 조건별 활성화 여부 체크 (Boolean)
+        $isIdSearch       = !empty($id);
+        $isUserSearch     = !empty($userId);
+        $isCategorySearch = (!empty($category) && !empty($categoryId));
+
+        // 활성화된 조건의 개수 세기
+        $activeConditions = 0;
+        if ($isIdSearch) $activeConditions++;
+        if ($isUserSearch) $activeConditions++;
+        if ($isCategorySearch) $activeConditions++;
+
+        // ✅ 유효성 검사 1: 조건이 하나도 없을 때
+        if ($activeConditions === 0) {
+            http_response_code(400);
+            echo json_encode([
+                'message' => '검색 파라미터가 필요합니다. (id, creator_user_id, 혹은 category+category_id)'
+            ], JSON_UNESCAPED_UNICODE);
+            return;
+        }
+
+        // ✅ 유효성 검사 2: 조건이 2개 이상 겹칠 때 (모호함 방지)
+        if ($activeConditions > 1) {
+            http_response_code(400);
+            echo json_encode([
+                'message' => '검색 조건은 하나만 사용할 수 있습니다. 파라미터를 섞어서 보낼 수 없습니다.'
+            ], JSON_UNESCAPED_UNICODE);
+            return;
+        }
+
+        try {
+            // CASE 1: ID 단일 조회
+            if ($isIdSearch) {
+                $leaflet = $this->leafletModel->getById($id);
+
+                if (!$leaflet) {
+                    http_response_code(404);
+                    echo json_encode(['message' => '해당 리플렛을 찾을 수 없습니다.'], JSON_UNESCAPED_UNICODE);
+                    return;
+                }
+                
+                // 단일 객체 이미지 디코딩
+                if (isset($leaflet['image_urls']) && is_string($leaflet['image_urls'])) {
+                    $leaflet['image_urls'] = json_decode($leaflet['image_urls'], true);
+                }
+                echo json_encode($leaflet, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
                 return;
             }
 
-            // DB에 저장된 JSON 문자열을 PHP 배열로 변환
-            if (isset($leaflet['image_urls']) && is_string($leaflet['image_urls'])) {
-                $leaflet['image_urls'] = json_decode($leaflet['image_urls'], true);
+            // CASE 2: User ID 목록 조회
+            if ($isUserSearch) {
+                $leaflets = $this->leafletModel->getByCreateUserId($userId);
+                $this->sendListResponse($leaflets);
+                return;
             }
 
-            echo json_encode($leaflet, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+            // CASE 3: Category 목록 조회
+            if ($isCategorySearch) {
+                $leaflets = $this->leafletModel->getByCategoryId($category, $categoryId);
+                $this->sendListResponse($leaflets);
+                return;
+            }
 
         } catch (\Throwable $e) {
             http_response_code(500);
@@ -492,59 +612,90 @@ class UploadController {
     }
 
     /**
-     * @OA\Get(
-     * path="/api/leaflet/create_user/{userId}",
-     * summary="특정 사용자가 업로드한 리플렛 목록 조회",
+     * @OA\Delete(
+     * path="/api/leaflet/{id}",
+     * summary="리플렛 삭제",
+     * description="ID를 기준으로 특정 리플렛 정보를 삭제합니다.",
      * tags={"Leaflet"},
      * security={{"bearerAuth":{}}},
      * @OA\Parameter(
-     * name="userId",
+     * name="id",
      * in="path",
      * required=true,
-     * description="작성자(User) ID",
+     * description="삭제할 리플렛 ID",
      * @OA\Schema(type="integer")
      * ),
      * @OA\Response(
      * response=200,
-     * description="성공 (배열 반환)",
+     * description="삭제 성공",
      * @OA\JsonContent(
-     * type="array",
-     * @OA\Items(
-     * @OA\Property(property="id", type="integer", example=1),
-     * @OA\Property(property="title", type="string", example="전시회 리플렛"),
-     * @OA\Property(property="image_urls", type="array", @OA\Items(type="string")),
-     * @OA\Property(property="category", type="string"),
-     * @OA\Property(property="create_dtm", type="string", format="date-time")
-     * )
+     * type="object",
+     * @OA\Property(property="message", type="string", example="리플렛이 성공적으로 삭제되었습니다."),
+     * @OA\Property(property="id", type="integer", example=15)
      * )
      * ),
-     * @OA\Response(response=500, description="서버 오류")
+     * @OA\Response(
+     * response=404,
+     * description="삭제 실패 (존재하지 않는 ID)",
+     * @OA\JsonContent(
+     * type="object",
+     * @OA\Property(property="message", type="string", example="삭제 실패: 존재하지 않는 리플렛 ID입니다.")
+     * )
+     * ),
+     * @OA\Response(
+     * response=500,
+     * description="서버 오류",
+     * @OA\JsonContent(
+     * type="object",
+     * @OA\Property(property="message", type="string", example="서버 오류: ...")
+     * )
+     * )
      * )
      */
-    public function getLeafletsByUserId($userId) {
+    public function deleteLeaflet($id) {
+        // 1. CORS 및 Method 확인 (라우터에서 처리 안 했을 경우 안전장치)
+        if ($_SERVER['REQUEST_METHOD'] !== 'DELETE') {
+            http_response_code(405); // Method Not Allowed
+            header('Content-Type: application/json; charset=utf-8');
+            echo json_encode(['message' => '허용되지 않은 메서드입니다. (DELETE만 가능)'], JSON_UNESCAPED_UNICODE);
+            return;
+        }
+
+        // 2. 인증 확인
+        try {
+            $this->auth->authenticate();
+        } catch (\Exception $e) {
+            // auth 클래스 내부에서 에러를 던진다면 여기서 잡아서 처리
+            http_response_code(401);
+            echo json_encode(['message' => '인증 실패'], JSON_UNESCAPED_UNICODE);
+            return;
+        }
+
         header('Content-Type: application/json; charset=utf-8');
 
+        // ID 유효성 검사 (빈 값 체크)
+        if (empty($id)) {
+            http_response_code(400);
+            echo json_encode(['message' => '삭제할 ID가 전달되지 않았습니다.'], JSON_UNESCAPED_UNICODE);
+            return;
+        }
+
         try {
-            $leaflets = $this->leafletModel->getByCreateUserId($userId);
+            // 3. 모델 삭제 호출 (앞서 만든 delete 함수 사용)
+            $isDeleted = $this->leafletModel->delete($id);
 
-            // 목록이 비어있어도 빈 배열 [] 리턴 (404 아님)
-            if (empty($leaflets)) {
-                echo json_encode([], JSON_UNESCAPED_UNICODE);
-                return;
+            if ($isDeleted) {
+                // 삭제 성공
+                http_response_code(200); 
+                echo json_encode(['message' => '리플렛이 성공적으로 삭제되었습니다.', 'id' => $id], JSON_UNESCAPED_UNICODE);
+            } else {
+                // 삭제 실패 (ID가 없거나 이미 삭제됨)
+                http_response_code(404);
+                echo json_encode(['message' => '삭제 실패: 존재하지 않는 리플렛 ID입니다.'], JSON_UNESCAPED_UNICODE);
             }
-
-            // 목록 전체를 순회하며 image_urls JSON 디코딩 처리
-            foreach ($leaflets as &$item) {
-                if (isset($item['image_urls']) && is_string($item['image_urls'])) {
-                    $item['image_urls'] = json_decode($item['image_urls'], true);
-                }
-            }
-            // 참조 해제 (foreach 참조 사용 시 권장)
-            unset($item);
-
-            echo json_encode($leaflets, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 
         } catch (\Throwable $e) {
+            // 서버 내부 오류
             http_response_code(500);
             echo json_encode(['message' => '서버 오류: ' . $e->getMessage()], JSON_UNESCAPED_UNICODE);
         }

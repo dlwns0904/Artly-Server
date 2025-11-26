@@ -216,12 +216,12 @@ elseif ($requestMethod === 'PATCH' && preg_match('#^/api/leaflet/(\d+)$#', $requ
     (new \Controllers\UploadController())->updateLeaflet($m[1]);
     exit;
 }
-elseif ($requestMethod === 'GET' && preg_match('#^/api/leaflet/(\d+)$#', $requestUri, $m)) {
-    (new \Controllers\UploadController())->getLeafletById($m[1]);
+elseif ($requestMethod === 'GET' && $path === '/api/leaflet') {
+    (new \Controllers\UploadController())->getLeaflet();
     exit;
 }
-elseif ($requestMethod === 'GET' && preg_match('#^/api/leaflet/create_user/(\d+)$#', $requestUri, $m)) {
-    (new \Controllers\UploadController())->getLeafletsByUserId($m[1]);
+elseif ($requestMethod === 'DELETE' && preg_match('#^/api/leaflet/(\d+)$#', $requestUri, $m)) {
+    (new \Controllers\UploadController())->deleteLeaflet($m[1]);
     exit;
 }
 
