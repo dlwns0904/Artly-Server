@@ -24,17 +24,53 @@ class LeafletModel {
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
+    public function getByCategoryId($category, $categoryId) {
+        $validCategories = [
+            'artCategory', 
+            'exhibitionCategory', 
+            'galleryCategory', 
+            'image'
+        ];
+
+        if (!in_array($category, $validCategories)) {
+            return [];
+        }
+
+        $sql = "SELECT * FROM APIServer_leaflet 
+                WHERE category = :category 
+                AND category_id = :category_id 
+                ORDER BY create_dtm DESC"; 
+
+        try {
+            $stmt = $this->pdo->prepare($sql);
+
+            $stmt->execute([
+                ':category'    => $category,
+                ':category_id' => $categoryId
+            ]);
+
+            $results = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+
+            return $results;
+
+        } catch (\PDOException $e) {
+            return [];
+        }
+    }
+
     public function create($data) {
         $stmt = $this->pdo->prepare("
             INSERT INTO APIServer_leaflet 
-            (create_user_id, title, image_urls, category)
-            VALUES (:user_id, :title, :image_urls, :category)
+            (create_user_id, title, image_urls, category, category_id)
+            VALUES (:user_id, :title, :image_urls, :category, :category_id)
         ");
+
         $stmt->execute([
             ':user_id'    => $data['user_id'],
             ':title'      => $data['title'],
             ':image_urls' => $data['image_urls'],
             ':category'   => $data['category'],
+            ':category_id'=> $data['category_id'] ?? null, 
         ]);
 
         $id = $this->pdo->lastInsertId();
@@ -62,6 +98,11 @@ class LeafletModel {
             $params[':category'] = $data['category'];
         }
 
+        if (array_key_exists('category_id', $data)) {
+            $fields[] = "category_id = :category_id";
+            $params[':category_id'] = $data['category_id'];
+        }
+
         // 업데이트할 내용이 하나도 없으면 바로 리턴
         if (empty($fields)) {
             return $this->getById($id);
@@ -79,6 +120,7 @@ class LeafletModel {
 
     public function delete($id) {
         $stmt = $this->pdo->prepare("DELETE FROM APIServer_leaflet WHERE id = :id");
-        return $stmt->execute([':id' => $id]);
+        $stmt->execute([':id' => $id]);
+        return $stmt->rowCount() > 0;
     }
 }
