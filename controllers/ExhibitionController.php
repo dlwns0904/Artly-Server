@@ -248,7 +248,6 @@ class ExhibitionController {
             'exhibition_location'   => $_POST['exhibition_location']   ?? null,
             'exhibition_price'      => $_POST['exhibition_price']      ?? null,
             'exhibition_tag'        => $_POST['exhibition_tag']        ?? null,
-            'exhibition_status'     => $_POST['exhibition_status']     ?? null,
             'exhibition_phone'      => $_POST['exhibition_phone']      ?? null,
             'exhibition_homepage'   => $_POST['exhibition_homepage']   ?? null,
         ];
@@ -271,6 +270,26 @@ class ExhibitionController {
             return;
         }
         $data = $raw;
+    }
+
+    $today = date('Y-m-d'); // 오늘 날짜 (서버 시간 기준)
+    $startDate = $data['exhibition_start_date'] ?? null;
+    $endDate   = $data['exhibition_end_date'] ?? null;
+
+    if ($startDate && $endDate) {
+        if ($today < $startDate) {
+            // 오늘이 시작일보다 이전 -> 예정됨
+            $data['exhibition_status'] = 'scheduled';
+        } elseif ($today > $endDate) {
+            // 오늘이 종료일보다 이후 -> 종료됨
+            $data['exhibition_status'] = 'ended';
+        } else {
+            // 시작일 <= 오늘 <= 종료일 -> 전시중
+            $data['exhibition_status'] = 'exhibited';
+        }
+    } else {
+        // 날짜 정보가 없으면 기본값 (예: scheduled) 또는 null 유지
+        $data['exhibition_status'] = null;
     }
 
     // 생성
