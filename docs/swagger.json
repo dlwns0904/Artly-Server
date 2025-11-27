@@ -1736,6 +1736,10 @@
                                         "type": "string",
                                         "nullable": true
                                     },
+                                    "exhibition_description": {
+                                        "type": "string",
+                                        "nullable": true
+                                    },
                                     "exhibition_category": {
                                         "type": "string",
                                         "nullable": true
@@ -1808,6 +1812,10 @@
                             "schema": {
                                 "properties": {
                                     "exhibition_title": {
+                                        "type": "string",
+                                        "nullable": true
+                                    },
+                                    "exhibition_description": {
                                         "type": "string",
                                         "nullable": true
                                     },

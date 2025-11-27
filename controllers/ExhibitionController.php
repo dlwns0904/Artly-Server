@@ -311,6 +311,7 @@ class ExhibitionController {
      * description="Method Spoofing을 위해 'PATCH' 값을 전송해야 합니다."
      * ),
      * @OA\Property(property="exhibition_title", type="string", nullable=true),
+     * @OA\Property(property="exhibition_description", type="string", nullable=true),
      * @OA\Property(property="exhibition_category", type="string", nullable=true),
      * @OA\Property(property="exhibition_start_date", type="string", format="date", nullable=true),
      * @OA\Property(property="exhibition_end_date", type="string", format="date", nullable=true),
@@ -331,6 +332,7 @@ class ExhibitionController {
      * @OA\Schema(
      * type="object",
      * @OA\Property(property="exhibition_title", type="string", nullable=true),
+     * @OA\Property(property="exhibition_description", type="string", nullable=true),
      * @OA\Property(property="exhibition_category", type="string", nullable=true),
      * @OA\Property(property="exhibition_start_date", type="string", format="date", nullable=true),
      * @OA\Property(property="exhibition_end_date", type="string", format="date", nullable=true),
@@ -379,6 +381,9 @@ class ExhibitionController {
         if ($isMultipart) {
             if (isset($_POST['exhibition_title']) && $_POST['exhibition_title'] !== '') {
                 $data['exhibition_title'] = $_POST['exhibition_title'];
+            }
+            if (isset($_POST['exhibition_description']) && $_POST['exhibition_description'] !== '') {
+                $data['exhibition_description'] = $_POST['exhibition_description'];
             }
             if (isset($_POST['exhibition_category']) && $_POST['exhibition_category'] !== '') {
                 $data['exhibition_category'] = $_POST['exhibition_category'];
