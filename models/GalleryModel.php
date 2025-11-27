@@ -368,78 +368,51 @@ class GalleryModel {
     }
 
     private function normalizeSns($snsInput) {
-    if ($snsInput === null || $snsInput === '') return null;
-
-    // 문자열이면 JSON 검증
-    if (is_string($snsInput)) {
-        $trim = trim($snsInput);
-        if ($trim === '') return null;
-
-        // 1. JSON 문법 검사
-        $decoded = json_decode($trim, true);
-        if (json_last_error() !== JSON_ERROR_NONE) {
-            throw new \InvalidArgumentException('gallery_sns 형식이 올바르지 않은 JSON 문자열입니다.');
-        }
-        $arr = $decoded;
-    } else {
-        // 배열로 들어온 경우
-        if (!is_array($snsInput)) {
-            throw new \InvalidArgumentException('gallery_sns는 배열이어야 합니다.');
-        }
-        $arr = $snsInput;
-    }
-
-    if (!is_array($arr)) {
-        throw new \InvalidArgumentException('gallery_sns는 JSON 배열([]) 형태여야 합니다.');
-    }
-
-    if (!empty($arr)) {
-        foreach ($arr as $index => $item) {
-            // 요소 하나하나가 배열(객체)이어야 함
-            if (!is_array($item)) {
-                 throw new \InvalidArgumentException("gallery_sns의 {$index}번째 요소가 객체 형태가 아닙니다. 대괄호 []로 감싸져 있는지 확인하세요.");
+        // 1. 입력값 파싱 (NULL, JSON String, Array 대응)
+        $inputArray = [];
+        
+        if (is_string($snsInput)) {
+            // JSON 문자열인 경우 디코딩
+            $decoded = json_decode($snsInput, true);
+            if (is_array($decoded)) {
+                $inputArray = $decoded;
             }
+        } elseif (is_array($snsInput)) {
+            // 이미 배열인 경우 그대로 사용
+            $inputArray = $snsInput;
+        } 
+        // null이거나 형식이 안 맞으면 $inputArray는 빈 배열 [] 상태 유지
 
-            // 필수 키(type, url)가 있는지 확인
-            if (!array_key_exists('type', $item) || !array_key_exists('url', $item)) {
-                throw new \InvalidArgumentException("gallery_sns의 {$index}번째 요소에 필수 키(type, url)가 누락되었습니다.");
+        // 2. 입력 데이터를 검색하기 쉽게 'type'을 Key로 하는 맵(Map)으로 변환
+        // 예: [{'type':'youtube', 'url':'B'}, {'type':'instagram', 'url':'A'}] 
+        //  -> ['youtube' => 'B', 'instagram' => 'A']
+        $snsMap = [];
+        foreach ($inputArray as $item) {
+            // 배열이고 필수 키가 있는지 확인
+            if (is_array($item) && isset($item['type']) && isset($item['url'])) {
+                // 타입은 소문자로 통일하여 키로 사용
+                $typeKey = strtolower(trim($item['type']));
+                $snsMap[$typeKey] = trim($item['url']);
             }
         }
-    }
 
-    // 스키마 검증: 배열, 최대 4개, 각 아이템 {type,url}
-    if (count($arr) > 4) {
-        throw new \InvalidArgumentException('gallery_sns는 최대 4개까지입니다.');
-    }
+        // 3. 강제할 순서 및 항목 정의 (인스타그램 -> 유튜브 -> 트위터 -> 페이스북)
+        $targetOrder = ['instagram', 'youtube', 'twitter', 'facebook'];
 
-    $allowedTypes = [
-        'instagram','facebook','x','youtube','tiktok','naver_blog','kakao_channel','homepage','etc'
-    ];
-
-    $out = [];
-    foreach ($arr as $i => $item) {
-        if (!is_array($item)) {
-            throw new \InvalidArgumentException("gallery_sns[$i] 형식이 잘못되었습니다.");
+        // 4. 정의된 순서대로 결과 배열 조립
+        $result = [];
+        foreach ($targetOrder as $type) {
+            // 맵에 해당 타입의 URL이 있으면 사용, 없으면 빈 문자열('')
+            $url = isset($snsMap[$type]) ? $snsMap[$type] : '';
+            
+            $result[] = [
+                'url'  => $url,
+                'type' => $type
+            ];
         }
-        $type = isset($item['type']) ? strtolower(trim($item['type'])) : null;
-        $url = isset($item['url']) ? trim($item['url']) : null;
 
-        if ($type === null || $url === null) {
-            throw new \InvalidArgumentException("gallery_sns[$i]는 type, url이 필요합니다.");
-        }
-        // 플랫폼 화이트리스트(원하면 주석 처리 가능)
-        if (!in_array($type, $allowedTypes, true)) {
-            throw new \InvalidArgumentException("허용되지 않는 type: {$type}");
-        }
-        // // URL 대략 검증(선택)
-        // if (!preg_match('#^https?://#i', $url)) {
-        //     throw new \InvalidArgumentException("gallery_sns[$i].url 형식이 잘못되었습니다.");
-        // }
-        $out[] = ['type'=>$type, 'url'=>$url];
-    }
-
-    // JSON 문자열로 반환(한글 안전)
-    return json_encode($out, JSON_UNESCAPED_UNICODE);
+        // 5. 최종 JSON 반환 (유니코드 보존, 슬래시 이스케이프 방지)
+        return json_encode($result, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     }
 
 }
