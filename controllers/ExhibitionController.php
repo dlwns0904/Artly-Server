@@ -398,43 +398,43 @@ class ExhibitionController {
         $data = [];
 
         if ($isMultipart) {
-            if (isset($_POST['exhibition_title']) && $_POST['exhibition_title'] !== '') {
+            if (isset($_POST['exhibition_title'])) {
                 $data['exhibition_title'] = $_POST['exhibition_title'];
             }
-            if (isset($_POST['exhibition_description']) && $_POST['exhibition_description'] !== '') {
+            if (isset($_POST['exhibition_description'])) {
                 $data['exhibition_description'] = $_POST['exhibition_description'];
             }
-            if (isset($_POST['exhibition_category']) && $_POST['exhibition_category'] !== '') {
+            if (isset($_POST['exhibition_category'])) {
                 $data['exhibition_category'] = $_POST['exhibition_category'];
             }
-            if (isset($_POST['exhibition_start_date']) && $_POST['exhibition_start_date'] !== '') {
+            if (isset($_POST['exhibition_start_date'])) {
                 $data['exhibition_start_date'] = $_POST['exhibition_start_date'];
             }
-            if (isset($_POST['exhibition_end_date']) && $_POST['exhibition_end_date'] !== '') {
+            if (isset($_POST['exhibition_end_date'])) {
                 $data['exhibition_end_date'] = $_POST['exhibition_end_date'];
             }
-            if (isset($_POST['exhibition_start_time']) && $_POST['exhibition_start_time'] !== '') {
+            if (isset($_POST['exhibition_start_time'])) {
                 $data['exhibition_start_time'] = $_POST['exhibition_start_time'];
             }
-            if (isset($_POST['exhibition_end_time']) && $_POST['exhibition_end_time'] !== '') {
+            if (isset($_POST['exhibition_end_time'])) {
                 $data['exhibition_end_time'] = $_POST['exhibition_end_time'];
             }
-            if (isset($_POST['exhibition_location']) && $_POST['exhibition_location'] !== '') {
+            if (isset($_POST['exhibition_location'])) {
                 $data['exhibition_location'] = $_POST['exhibition_location'];
             }
-            if (isset($_POST['exhibition_price']) && $_POST['exhibition_price'] !== '') {
+            if (isset($_POST['exhibition_price'])) {
                 $data['exhibition_price'] = $_POST['exhibition_price'];
             }
-            if (isset($_POST['exhibition_tag']) && $_POST['exhibition_tag'] !== '') {
+            if (isset($_POST['exhibition_tag'])) {
                 $data['exhibition_tag'] = $_POST['exhibition_tag'];
             }
-            if (isset($_POST['exhibition_status']) && $_POST['exhibition_status'] !== '') {
+            if (isset($_POST['exhibition_status'])) {
                 $data['exhibition_status'] = $_POST['exhibition_status'];
             }
-            if (isset($_POST['exhibition_phone']) && $_POST['exhibition_phone'] !== '') {
+            if (isset($_POST['exhibition_phone'])) {
                 $data['exhibition_phone'] = $_POST['exhibition_phone'];
             }
-            if (isset($_POST['exhibition_homepage']) && $_POST['exhibition_homepage'] !== '') {
+            if (isset($_POST['exhibition_homepage'])) {
                 $data['exhibition_homepage'] = $_POST['exhibition_homepage'];
             }
 

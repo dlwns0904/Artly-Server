@@ -238,46 +238,46 @@ class GalleryController {
 
         if ($isMultipart) {
             // isset()으로 체크하여 '존재하는 값만' $data에 추가
-            if (isset($_POST['gallery_name']) && $_POST['gallery_name'] !== '') {
+            if (isset($_POST['gallery_name'])) {
                 $data['gallery_name'] = $_POST['gallery_name'];
             }
-            if (isset($_POST['gallery_eng_name']) && $_POST['gallery_eng_name'] !== '') {
+            if (isset($_POST['gallery_eng_name'])) {
                 $data['gallery_eng_name'] = $_POST['gallery_eng_name'];
             }
-            if (isset($_POST['gallery_address']) && $_POST['gallery_address'] !== '') {
+            if (isset($_POST['gallery_address'])) {
                 $data['gallery_address'] = $_POST['gallery_address'];
             }
-            if (isset($_POST['gallery_start_time']) && $_POST['gallery_start_time'] !== '') {
+            if (isset($_POST['gallery_start_time'])) {
                 $data['gallery_start_time'] = $_POST['gallery_start_time'];
             }
-            if (isset($_POST['gallery_end_time']) && $_POST['gallery_end_time'] !== '') {
+            if (isset($_POST['gallery_end_time'])) {
                 $data['gallery_end_time'] = $_POST['gallery_end_time'];
             }
-            if (isset($_POST['gallery_closed_day']) && $_POST['gallery_closed_day'] !== '') {
+            if (isset($_POST['gallery_closed_day'])) {
                 $data['gallery_closed_day'] = $_POST['gallery_closed_day'];
             }
-            if (isset($_POST['gallery_category']) && $_POST['gallery_category'] !== '') {
+            if (isset($_POST['gallery_category'])) {
                 $data['gallery_category'] = $_POST['gallery_category'];
             }
-            if (isset($_POST['gallery_description']) && $_POST['gallery_description'] !== '') {
+            if (isset($_POST['gallery_description'])) {
                 $data['gallery_description'] = $_POST['gallery_description'];
             }
-            if (isset($_POST['gallery_latitude']) && $_POST['gallery_latitude'] !== '') {
+            if (isset($_POST['gallery_latitude'])) {
                 $data['gallery_latitude'] = $_POST['gallery_latitude'];
             }
-            if (isset($_POST['gallery_longitude']) && $_POST['gallery_longitude'] !== '') {
+            if (isset($_POST['gallery_longitude'])) {
                 $data['gallery_longitude'] = $_POST['gallery_longitude'];
             }
-            if (isset($_POST['gallery_phone']) && $_POST['gallery_phone'] !== '') {
+            if (isset($_POST['gallery_phone'])) {
                 $data['gallery_phone'] = $_POST['gallery_phone'];
             }
-            if (isset($_POST['gallery_email']) && $_POST['gallery_email'] !== '') {
+            if (isset($_POST['gallery_email'])) {
                 $data['gallery_email'] = $_POST['gallery_email'];
             }
-            if (isset($_POST['gallery_homepage']) && $_POST['gallery_homepage'] !== '') {
+            if (isset($_POST['gallery_homepage'])) {
                 $data['gallery_homepage'] = $_POST['gallery_homepage'];
             }
-            if (isset($_POST['gallery_sns']) && $_POST['gallery_sns'] !== '') {
+            if (isset($_POST['gallery_sns'])) {
                 $data['gallery_sns'] = $_POST['gallery_sns'];
             }
             
