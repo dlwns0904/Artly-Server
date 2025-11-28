@@ -2030,13 +2030,13 @@
                 ]
             }
         },
-        "/api/exhibitions/{id}/artworks": {
+        "/api/exhibitions/{id}/artists": {
             "post": {
                 "tags": [
                     "Exhibition"
                 ],
                 "summary": "전시회 작가 등록",
-                "operationId": "2692d0fae9c84fa24b4b0a97bd0db0a7",
+                "operationId": "70dda7276f19b38db3c9ae34637709b0",
                 "parameters": [
                     {
                         "name": "id",
