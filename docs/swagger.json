@@ -2054,15 +2054,15 @@
                         "application/json": {
                             "schema": {
                                 "required": [
-                                    "artist_id",
-                                    "role"
+                                    "artist_ids"
                                 ],
                                 "properties": {
-                                    "artist_id": {
-                                        "type": "integer"
-                                    },
-                                    "role": {
-                                        "type": "string"
+                                    "artist_ids": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "integer",
+                                            "example": 1
+                                        }
                                     }
                                 },
                                 "type": "object"
@@ -2082,35 +2082,38 @@
                                             "example": "Artist registered successfully"
                                         },
                                         "data": {
-                                            "properties": {
-                                                "id": {
-                                                    "type": "integer"
+                                            "type": "array",
+                                            "items": {
+                                                "properties": {
+                                                    "id": {
+                                                        "type": "integer"
+                                                    },
+                                                    "exhibition_id": {
+                                                        "type": "integer"
+                                                    },
+                                                    "artist_id": {
+                                                        "type": "integer"
+                                                    },
+                                                    "create_dtm": {
+                                                        "type": "string",
+                                                        "format": "date-time"
+                                                    },
+                                                    "update_dtm": {
+                                                        "type": "string",
+                                                        "format": "date-time"
+                                                    }
                                                 },
-                                                "exhibition_id": {
-                                                    "type": "integer"
-                                                },
-                                                "artist_id": {
-                                                    "type": "integer"
-                                                },
-                                                "role": {
-                                                    "type": "string"
-                                                },
-                                                "create_dtm": {
-                                                    "type": "string",
-                                                    "format": "date-time"
-                                                },
-                                                "update_dtm": {
-                                                    "type": "string",
-                                                    "format": "date-time"
-                                                }
-                                            },
-                                            "type": "object"
+                                                "type": "object"
+                                            }
                                         }
                                     },
                                     "type": "object"
                                 }
                             }
                         }
+                    },
+                    "400": {
+                        "description": "잘못된 요청"
                     },
                     "401": {
                         "description": "Unauthorized"

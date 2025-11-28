@@ -591,7 +591,7 @@ class ExhibitionController {
 
     /**
      * @OA\Post(
-     *   path="/api/exhibitions/{id}/artist",
+     *   path="/api/exhibitions/{id}/artists",
      *   summary="전시회 작가 등록",
      *   tags={"Exhibition"},
      *   security={{"bearerAuth":{}}},
