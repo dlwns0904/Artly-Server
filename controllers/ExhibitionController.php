@@ -485,24 +485,44 @@ class ExhibitionController {
      * )
      */
     public function deleteExhibition($id) {
-        $user = $this->auth->authenticate();
-        $userId = $user->user_id;
+        // 1. 인증 및 사용자 ID 확보
+        $this->auth->authenticate();
+        $userId = $this->auth->getUserId();
 
-        $userData = $this->userModel->getById($userId);
+        // 2. 삭제하려는 전시회 정보 조회
         $exhibition = $this->model->getById($id);
 
-        if ($userData['gallery_id'] != $exhibition['gallery_id']) {
+        if (!$exhibition) {
+            http_response_code(404);
+            echo json_encode(['message' => '존재하지 않는 전시회입니다.'], JSON_UNESCAPED_UNICODE);
+            return;
+        }
+
+        // 3. 권한 체크: "이 전시회가 속한 갤러리가 내 것인가?"
+        // 내가 관리하는 갤러리 목록 가져오기
+        $myGalleries = $this->galleryModel->getGalleriesBySearch(['user_id' => $userId]);
+        
+        // 내 갤러리 ID들만 추출 (예: [1, 5, 10])
+        $myGalleryIds = array_column($myGalleries, 'id');
+
+        // 전시회의 gallery_id가 내 갤러리 목록에 포함되어 있는지 확인
+        if (!in_array($exhibition['gallery_id'], $myGalleryIds)) {
             http_response_code(403);
-            echo json_encode(['message' => '권한이 없습니다.'], JSON_UNESCAPED_UNICODE);
+            echo json_encode(['message' => '해당 전시회가 열리는 갤러리의 관리자가 아니므로 삭제 권한이 없습니다.'], JSON_UNESCAPED_UNICODE);
             exit;
         }
 
+        // 4. 삭제 실행
         $success = $this->model->delete($id);
+        
         if ($success) {
-            echo json_encode(['message' => 'Exhibition deleted successfully']);
+            // 200 OK (성공 시 보통 상태코드 200이나 204 사용)
+            http_response_code(200);
+            echo json_encode(['message' => 'Exhibition deleted successfully'], JSON_UNESCAPED_UNICODE);
         } else {
-            http_response_code(404);
-            echo json_encode(['message' => 'Exhibition not found or delete failed']);
+            // DB 오류 등으로 실패 시
+            http_response_code(500);
+            echo json_encode(['message' => 'Exhibition delete failed'], JSON_UNESCAPED_UNICODE);
         }
     }
 
