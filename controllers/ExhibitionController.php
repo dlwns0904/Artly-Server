@@ -248,7 +248,6 @@ class ExhibitionController {
             'exhibition_location'   => $_POST['exhibition_location']   ?? null,
             'exhibition_price'      => $_POST['exhibition_price']      ?? null,
             'exhibition_tag'        => $_POST['exhibition_tag']        ?? null,
-            'exhibition_status'     => $_POST['exhibition_status']     ?? null,
             'exhibition_phone'      => $_POST['exhibition_phone']      ?? null,
             'exhibition_homepage'   => $_POST['exhibition_homepage']   ?? null,
         ];
@@ -271,6 +270,26 @@ class ExhibitionController {
             return;
         }
         $data = $raw;
+    }
+
+    $today = date('Y-m-d'); // 오늘 날짜 (서버 시간 기준)
+    $startDate = $data['exhibition_start_date'] ?? null;
+    $endDate   = $data['exhibition_end_date'] ?? null;
+
+    if ($startDate && $endDate) {
+        if ($today < $startDate) {
+            // 오늘이 시작일보다 이전 -> 예정됨
+            $data['exhibition_status'] = 'scheduled';
+        } elseif ($today > $endDate) {
+            // 오늘이 종료일보다 이후 -> 종료됨
+            $data['exhibition_status'] = 'ended';
+        } else {
+            // 시작일 <= 오늘 <= 종료일 -> 전시중
+            $data['exhibition_status'] = 'exhibited';
+        }
+    } else {
+        // 날짜 정보가 없으면 기본값 (예: scheduled) 또는 null 유지
+        $data['exhibition_status'] = null;
     }
 
     // 생성
@@ -311,6 +330,7 @@ class ExhibitionController {
      * description="Method Spoofing을 위해 'PATCH' 값을 전송해야 합니다."
      * ),
      * @OA\Property(property="exhibition_title", type="string", nullable=true),
+     * @OA\Property(property="exhibition_description", type="string", nullable=true),
      * @OA\Property(property="exhibition_category", type="string", nullable=true),
      * @OA\Property(property="exhibition_start_date", type="string", format="date", nullable=true),
      * @OA\Property(property="exhibition_end_date", type="string", format="date", nullable=true),
@@ -331,6 +351,7 @@ class ExhibitionController {
      * @OA\Schema(
      * type="object",
      * @OA\Property(property="exhibition_title", type="string", nullable=true),
+     * @OA\Property(property="exhibition_description", type="string", nullable=true),
      * @OA\Property(property="exhibition_category", type="string", nullable=true),
      * @OA\Property(property="exhibition_start_date", type="string", format="date", nullable=true),
      * @OA\Property(property="exhibition_end_date", type="string", format="date", nullable=true),
@@ -377,40 +398,43 @@ class ExhibitionController {
         $data = [];
 
         if ($isMultipart) {
-            if (isset($_POST['exhibition_title']) && $_POST['exhibition_title'] !== '') {
+            if (isset($_POST['exhibition_title'])) {
                 $data['exhibition_title'] = $_POST['exhibition_title'];
             }
-            if (isset($_POST['exhibition_category']) && $_POST['exhibition_category'] !== '') {
+            if (isset($_POST['exhibition_description'])) {
+                $data['exhibition_description'] = $_POST['exhibition_description'];
+            }
+            if (isset($_POST['exhibition_category'])) {
                 $data['exhibition_category'] = $_POST['exhibition_category'];
             }
-            if (isset($_POST['exhibition_start_date']) && $_POST['exhibition_start_date'] !== '') {
+            if (isset($_POST['exhibition_start_date'])) {
                 $data['exhibition_start_date'] = $_POST['exhibition_start_date'];
             }
-            if (isset($_POST['exhibition_end_date']) && $_POST['exhibition_end_date'] !== '') {
+            if (isset($_POST['exhibition_end_date'])) {
                 $data['exhibition_end_date'] = $_POST['exhibition_end_date'];
             }
-            if (isset($_POST['exhibition_start_time']) && $_POST['exhibition_start_time'] !== '') {
+            if (isset($_POST['exhibition_start_time'])) {
                 $data['exhibition_start_time'] = $_POST['exhibition_start_time'];
             }
-            if (isset($_POST['exhibition_end_time']) && $_POST['exhibition_end_time'] !== '') {
+            if (isset($_POST['exhibition_end_time'])) {
                 $data['exhibition_end_time'] = $_POST['exhibition_end_time'];
             }
-            if (isset($_POST['exhibition_location']) && $_POST['exhibition_location'] !== '') {
+            if (isset($_POST['exhibition_location'])) {
                 $data['exhibition_location'] = $_POST['exhibition_location'];
             }
-            if (isset($_POST['exhibition_price']) && $_POST['exhibition_price'] !== '') {
+            if (isset($_POST['exhibition_price'])) {
                 $data['exhibition_price'] = $_POST['exhibition_price'];
             }
-            if (isset($_POST['exhibition_tag']) && $_POST['exhibition_tag'] !== '') {
+            if (isset($_POST['exhibition_tag'])) {
                 $data['exhibition_tag'] = $_POST['exhibition_tag'];
             }
-            if (isset($_POST['exhibition_status']) && $_POST['exhibition_status'] !== '') {
+            if (isset($_POST['exhibition_status'])) {
                 $data['exhibition_status'] = $_POST['exhibition_status'];
             }
-            if (isset($_POST['exhibition_phone']) && $_POST['exhibition_phone'] !== '') {
+            if (isset($_POST['exhibition_phone'])) {
                 $data['exhibition_phone'] = $_POST['exhibition_phone'];
             }
-            if (isset($_POST['exhibition_homepage']) && $_POST['exhibition_homepage'] !== '') {
+            if (isset($_POST['exhibition_homepage'])) {
                 $data['exhibition_homepage'] = $_POST['exhibition_homepage'];
             }
 
@@ -461,24 +485,44 @@ class ExhibitionController {
      * )
      */
     public function deleteExhibition($id) {
-        $user = $this->auth->authenticate();
-        $userId = $user->user_id;
+        // 1. 인증 및 사용자 ID 확보
+        $this->auth->authenticate();
+        $userId = $this->auth->getUserId();
 
-        $userData = $this->userModel->getById($userId);
+        // 2. 삭제하려는 전시회 정보 조회
         $exhibition = $this->model->getById($id);
 
-        if ($userData['gallery_id'] != $exhibition['gallery_id']) {
+        if (!$exhibition) {
+            http_response_code(404);
+            echo json_encode(['message' => '존재하지 않는 전시회입니다.'], JSON_UNESCAPED_UNICODE);
+            return;
+        }
+
+        // 3. 권한 체크: "이 전시회가 속한 갤러리가 내 것인가?"
+        // 내가 관리하는 갤러리 목록 가져오기
+        $myGalleries = $this->galleryModel->getGalleriesBySearch(['user_id' => $userId]);
+        
+        // 내 갤러리 ID들만 추출 (예: [1, 5, 10])
+        $myGalleryIds = array_column($myGalleries, 'id');
+
+        // 전시회의 gallery_id가 내 갤러리 목록에 포함되어 있는지 확인
+        if (!in_array($exhibition['gallery_id'], $myGalleryIds)) {
             http_response_code(403);
-            echo json_encode(['message' => '권한이 없습니다.'], JSON_UNESCAPED_UNICODE);
+            echo json_encode(['message' => '해당 전시회가 열리는 갤러리의 관리자가 아니므로 삭제 권한이 없습니다.'], JSON_UNESCAPED_UNICODE);
             exit;
         }
 
+        // 4. 삭제 실행
         $success = $this->model->delete($id);
+        
         if ($success) {
-            echo json_encode(['message' => 'Exhibition deleted successfully']);
+            // 200 OK (성공 시 보통 상태코드 200이나 204 사용)
+            http_response_code(200);
+            echo json_encode(['message' => 'Exhibition deleted successfully'], JSON_UNESCAPED_UNICODE);
         } else {
-            http_response_code(404);
-            echo json_encode(['message' => 'Exhibition not found or delete failed']);
+            // DB 오류 등으로 실패 시
+            http_response_code(500);
+            echo json_encode(['message' => 'Exhibition delete failed'], JSON_UNESCAPED_UNICODE);
         }
     }
 
@@ -547,7 +591,7 @@ class ExhibitionController {
 
         /**
      * @OA\Post(
-     *   path="/api/exhibitions/{id}/artist",
+     *   path="/api/exhibitions/{id}/artists",
      *   summary="전시회 작가 등록",
      *   tags={"Exhibition"},
      *   security={{"bearerAuth":{}}},
