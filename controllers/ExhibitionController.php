@@ -547,7 +547,7 @@ class ExhibitionController {
 
         /**
      * @OA\Post(
-     *   path="/api/exhibitions/{id}/artworks",
+     *   path="/api/exhibitions/{id}/artist",
      *   summary="전시회 작가 등록",
      *   tags={"Exhibition"},
      *   security={{"bearerAuth":{}}},
@@ -558,9 +558,12 @@ class ExhibitionController {
      *   @OA\RequestBody(
      *     required=true,
      *     @OA\JsonContent(
-     *       required={"artist_id","role"},
-     *       @OA\Property(property="artist_id", type="integer"),
-     *       @OA\Property(property="role", type="string")
+     *       required={"artist_ids"},
+     *       @OA\Property(
+     *         property="artist_ids",
+     *         type="array",
+     *         @OA\Items(type="integer", example=1)
+     *       )
      *     )
      *   ),
      *   @OA\Response(
@@ -568,16 +571,21 @@ class ExhibitionController {
      *     description="등록 성공",
      *     @OA\JsonContent(
      *       @OA\Property(property="message", type="string", example="Artist registered successfully"),
-     *       @OA\Property(property="data", type="object",
-     *         @OA\Property(property="id", type="integer"),
-     *         @OA\Property(property="exhibition_id", type="integer"),
-     *         @OA\Property(property="artist_id", type="integer"),
-     *         @OA\Property(property="role", type="string"),
-     *         @OA\Property(property="create_dtm", type="string", format="date-time"),
-     *         @OA\Property(property="update_dtm", type="string", format="date-time")
+     *       @OA\Property(
+     *         property="data",
+     *         type="array",
+     *         @OA\Items(
+     *           type="object",
+     *           @OA\Property(property="id", type="integer"),
+     *           @OA\Property(property="exhibition_id", type="integer"),
+     *           @OA\Property(property="artist_id", type="integer"),
+     *           @OA\Property(property="create_dtm", type="string", format="date-time"),
+     *           @OA\Property(property="update_dtm", type="string", format="date-time")
+     *         )
      *       )
      *     )
      *   ),
+     *   @OA\Response(response=400, description="잘못된 요청"),
      *   @OA\Response(response=401, description="Unauthorized"),
      *   @OA\Response(response=403, description="권한이 없습니다."),
      *   @OA\Response(response=500, description="등록 실패")
@@ -587,9 +595,16 @@ class ExhibitionController {
         $user = $this->auth->authenticate();
         $userId = $user->user_id;
 
-        $userData = $this->userModel->getById($userId);
+        $userData   = $this->userModel->getById($userId);
         $exhibition = $this->model->getById($id);
 
+        if (!$exhibition) {
+            http_response_code(404);
+            echo json_encode(['message' => 'Exhibition not found'], JSON_UNESCAPED_UNICODE);
+            exit;
+        }
+
+        // 해당 전시 소속 갤러리 유저만 등록 가능
         if ($userData['gallery_id'] != $exhibition['gallery_id']) {
             http_response_code(403);
             echo json_encode(['message' => '권한이 없습니다.'], JSON_UNESCAPED_UNICODE);
@@ -597,14 +612,42 @@ class ExhibitionController {
         }
 
         $data = json_decode(file_get_contents('php://input'), true);
-        $registeredArtist = $this->model->registerArtist($id, $data);
 
-        if ($registeredArtist) {
+        if (!isset($data['artist_ids']) || !is_array($data['artist_ids'])) {
+            http_response_code(400);
+            echo json_encode(['message' => 'artist_ids (array)를 전달해 주세요.'], JSON_UNESCAPED_UNICODE);
+            exit;
+        }
+
+        // 숫자로 캐스팅 + 빈 값 제거
+        $artistIds = array_values(array_filter(
+            array_map('intval', $data['artist_ids']),
+            fn($v) => $v > 0
+        ));
+
+        if (empty($artistIds)) {
+            http_response_code(400);
+            echo json_encode(['message' => 'artist_ids 가 비어 있습니다.'], JSON_UNESCAPED_UNICODE);
+            exit;
+        }
+
+        try {
+            $registered = $this->model->registerArtists($id, $artistIds);
+        } catch (\Exception $e) {
+            http_response_code(500);
+            echo json_encode(['message' => 'Failed to register Artist', 'error' => $e->getMessage()]);
+            exit;
+        }
+
+        if ($registered && count($registered) > 0) {
             http_response_code(201);
-            echo json_encode(['message' => 'Artist registered successfully', 'data' => $registeredArtist], JSON_UNESCAPED_UNICODE);
+            echo json_encode([
+                'message' => 'Artist registered successfully',
+                'data'    => $registered
+            ], JSON_UNESCAPED_UNICODE);
         } else {
             http_response_code(500);
-            echo json_encode(['message' => 'Failed to register Artist']);
+            echo json_encode(['message' => 'Failed to register Artist'], JSON_UNESCAPED_UNICODE);
         }
     }
 }

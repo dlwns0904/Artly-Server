@@ -376,22 +376,50 @@ class ExhibitionModel {
         return $stmt->fetch(PDO::FETCH_ASSOC);
     }
 
-    public function registerArtist($id, $data) {
-        $stmt = $this->pdo->prepare("INSERT INTO APIServer_exhibition_participation
-            (exhibition_id, artist_id, role, create_dtm, update_dtm)
-            VALUES (:exhibition_id, :artist_id, :role, NOW(), NOW())");
+    public function registerArtists($exhibitionId, array $artistIds) {
+        $sqlInsert = "
+            INSERT INTO APIServer_exhibition_participation
+                (exhibition_id, artist_id, create_dtm, update_dtm)
+            VALUES
+                (:exhibition_id, :artist_id, NOW(), NOW())
+        ";
 
-        $stmt->execute([
-            ':exhibition_id' => $id,
-            ':artist_id' => $data['artist_id'],
-            ':role' => $data['role']
-        ]);
+        $stmtInsert = $this->pdo->prepare($sqlInsert);
 
-        // 생성된 데이터의 ID 가져오기Add commentMore actions
-        $id = $this->pdo->lastInsertId();
+        $sqlSelect = "
+            SELECT *
+            FROM APIServer_exhibition_participation
+            WHERE id = :id
+        ";
+        $stmtSelect = $this->pdo->prepare($sqlSelect);
 
-        $stmt = $this->pdo->prepare("SELECT * FROM APIServer_exhibition_participation WHERE id = :id");
-        $stmt->execute([':id' => $id]);
-        return $stmt->fetch(PDO::FETCH_ASSOC);
+        $result = [];
+
+        try {
+            $this->pdo->beginTransaction();
+
+            foreach ($artistIds as $artistId) {
+                $stmtInsert->execute([
+                    ':exhibition_id' => $exhibitionId,
+                    ':artist_id'     => $artistId,
+                ]);
+
+                $id = $this->pdo->lastInsertId();
+
+                $stmtSelect->execute([':id' => $id]);
+                $row = $stmtSelect->fetch(\PDO::FETCH_ASSOC);
+
+                if ($row) {
+                    $result[] = $row;
+                }
+            }
+
+            $this->pdo->commit();
+        } catch (\Exception $e) {
+            $this->pdo->rollBack();
+            throw $e;
+        }
+
+        return $result;
     }
 }
