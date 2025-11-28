@@ -589,9 +589,9 @@ class ExhibitionController {
         }
     }
 
-        /**
+    /**
      * @OA\Post(
-     *   path="/api/exhibitions/{id}/artists",
+     *   path="/api/exhibitions/{id}/artist",
      *   summary="전시회 작가 등록",
      *   tags={"Exhibition"},
      *   security={{"bearerAuth":{}}},
@@ -663,10 +663,12 @@ class ExhibitionController {
             exit;
         }
 
-        // 숫자로 캐스팅 + 빈 값 제거
+        // 숫자로 캐스팅 + 0 이하 제거 (PHP 7.3 호환)
         $artistIds = array_values(array_filter(
             array_map('intval', $data['artist_ids']),
-            fn($v) => $v > 0
+            function ($v) {
+                return $v > 0;
+            }
         ));
 
         if (empty($artistIds)) {
