@@ -101,7 +101,7 @@ class ArtController {
      * description="[필터] 특정 전시회 이름 (쉼표(,)로 구분하여 여러 개 검색 가능)",
      * @OA\Schema(
      * type="string",
-     * example="모네전,피카소전"
+     * example="빛의 정원,김창열 '물방울전'"
      * )
      * ),
      * @OA\Response(

@@ -95,7 +95,7 @@ class ExhibitionController {
      * name="gallery_name", 
      * in="query", 
      * description="갤러리명 검색 (쉼표로 구분하여 여러 개 검색 가능)", 
-     * @OA\Schema(type="string", example="국립현대미술관,예술의전당")
+     * @OA\Schema(type="string", example="서울 현대 미술관,예술의전당")
      * ),
      * @OA\Response(response=200, description="전시회 목록 조회 성공")
      * )
@@ -123,18 +123,16 @@ class ExhibitionController {
             'search'     => $_GET['search'] ?? null
         ];
 
-        // [수정] gallery_name 다중 검색 로직
+        // ---------------------------------------------------------
+        // [수정] 갤러리 ID 구하기 (배열로 수집)
+        // ---------------------------------------------------------
+        $targetGalleryIds = [];
         if (!empty($_GET['gallery_name'])) {
-            // 1. 쉼표로 분리 및 공백 제거
             $gNames = explode(',', $_GET['gallery_name']);
             $gNames = array_map('trim', $gNames);
             
-            $targetGalleryIds = [];
-
-            // 2. 각 이름에 해당하는 갤러리 ID 수집
             foreach ($gNames as $name) {
                 if (empty($name)) continue;
-                
                 $galleryList = $this->galleryModel->getGalleries(['search' => $name]);
                 if (!empty($galleryList)) {
                     foreach ($galleryList as $g) {
@@ -142,21 +140,61 @@ class ExhibitionController {
                     }
                 }
             }
-
-            // 3. 결과가 하나도 없으면 404 리턴
+            
+            // 검색어는 있는데 결과가 없으면 404
             if (empty($targetGalleryIds)) {
                 http_response_code(404);
                 header('Content-Type: application/json');
                 echo json_encode(['message' => '해당 이름의 갤러리를 찾을 수 없습니다.'], JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
                 return;
             }
-
-            // 4. 찾은 ID 배열을 필터에 추가 (중복 제거)
-            $filters['gallery_id'] = array_unique($targetGalleryIds);
+            
+            // 중복 ID 제거
+            $targetGalleryIds = array_unique($targetGalleryIds);
         }
 
-        // Model 호출 (Model에서 WHERE IN 처리가 되어 있어야 함)
-        $exhibitions = $this->model->getExhibitions($filters);
+        // ---------------------------------------------------------
+        // [수정] Model 호출 로직 (다중 ID 대응)
+        // ---------------------------------------------------------
+        $exhibitions = [];
+
+        if (!empty($targetGalleryIds)) {
+            // Case 1: 갤러리 필터가 있는 경우 -> ID 별로 각각 호출해서 합침
+            foreach ($targetGalleryIds as $gId) {
+                // 모델은 단일 ID(int/string)만 받을 수 있으므로 하나씩 넣음
+                $filters['gallery_id'] = $gId; 
+                
+                // 해당 갤러리의 전시회 가져오기
+                $part = $this->model->getExhibitions($filters);
+                
+                // 결과 합치기 (기존 목록 + 새 목록)
+                $exhibitions = array_merge($exhibitions, $part);
+            }
+        } else {
+            // Case 2: 갤러리 필터가 없는 경우 -> 그냥 한 번만 호출
+            $exhibitions = $this->model->getExhibitions($filters);
+        }
+
+        // ---------------------------------------------------------
+        // [추가] PHP 레벨 재정렬 (선택 사항)
+        // 모델을 여러번 호출해서 합쳤기 때문에, [A갤러리 최신순] + [B갤러리 최신순] 형태로 되어있음.
+        // 이를 전체 기준으로 다시 섞어주는 것이 좋음. (기본값: 최신순)
+        // ---------------------------------------------------------
+        if (!empty($targetGalleryIds) && count($targetGalleryIds) > 1) {
+            $sortType = $_GET['sort'] ?? 'latest';
+            usort($exhibitions, function($a, $b) use ($sortType) {
+                if ($sortType === 'ending') {
+                    // 마감임박순 (날짜 오름차순)
+                    return strcmp($a['exhibition_end_date'], $b['exhibition_end_date']);
+                } elseif ($sortType === 'popular') {
+                    // 인기순 (좋아요 내림차순)
+                    return $b['like_count'] - $a['like_count'];
+                } else {
+                    // 최신순 (생성일 내림차순) - 기본값
+                    return strcmp($b['create_dtm'], $a['create_dtm']);
+                }
+            });
+        }
 
         // ✅ 포스터/조직 이미지 절대 URL 변환
         foreach ($exhibitions as &$e) {
