@@ -309,9 +309,10 @@
                     {
                         "name": "exhibition_title",
                         "in": "query",
-                        "description": "[필터] 특정 전시회 이름",
+                        "description": "[필터] 특정 전시회 이름 (쉼표(,)로 구분하여 여러 개 검색 가능)",
                         "schema": {
-                            "type": "string"
+                            "type": "string",
+                            "example": "모네전,피카소전"
                         }
                     }
                 ],
@@ -1568,9 +1569,10 @@
                     {
                         "name": "gallery_name",
                         "in": "query",
-                        "description": "갤러리명 검색",
+                        "description": "갤러리명 검색 (쉼표로 구분하여 여러 개 검색 가능)",
                         "schema": {
-                            "type": "string"
+                            "type": "string",
+                            "example": "국립현대미술관,예술의전당"
                         }
                     }
                 ],

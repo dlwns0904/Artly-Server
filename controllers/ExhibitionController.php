@@ -81,18 +81,23 @@ class ExhibitionController {
 
     /**
      * @OA\Get(
-     *     path="/api/exhibitions",
-     *     summary="전시회 목록 조회",
-     *     tags={"Exhibition"},
-     *     security={{"bearerAuth":{}}},
-     *     @OA\Parameter(name="status", in="query", description="scheduled/exhibited/ended", @OA\Schema(type="string")),
-     *     @OA\Parameter(name="category", in="query", @OA\Schema(type="string")),
-     *     @OA\Parameter(name="region", in="query", @OA\Schema(type="string")),
-     *     @OA\Parameter(name="sort", in="query", description="latest/ending/popular", @OA\Schema(type="string")),
-     *     @OA\Parameter(name="liked_only", in="query", @OA\Schema(type="boolean")),
-     *     @OA\Parameter(name="search", in="query", @OA\Schema(type="string")),
-     *     @OA\Parameter(name="gallery_name", in="query", description="갤러리명 검색", @OA\Schema(type="string")),
-     *     @OA\Response(response=200, description="전시회 목록 조회 성공")
+     * path="/api/exhibitions",
+     * summary="전시회 목록 조회",
+     * tags={"Exhibition"},
+     * security={{"bearerAuth":{}}},
+     * @OA\Parameter(name="status", in="query", description="scheduled/exhibited/ended", @OA\Schema(type="string")),
+     * @OA\Parameter(name="category", in="query", @OA\Schema(type="string")),
+     * @OA\Parameter(name="region", in="query", @OA\Schema(type="string")),
+     * @OA\Parameter(name="sort", in="query", description="latest/ending/popular", @OA\Schema(type="string")),
+     * @OA\Parameter(name="liked_only", in="query", @OA\Schema(type="boolean")),
+     * @OA\Parameter(name="search", in="query", @OA\Schema(type="string")),
+     * @OA\Parameter(
+     * name="gallery_name", 
+     * in="query", 
+     * description="갤러리명 검색 (쉼표로 구분하여 여러 개 검색 가능)", 
+     * @OA\Schema(type="string", example="국립현대미술관,예술의전당")
+     * ),
+     * @OA\Response(response=200, description="전시회 목록 조회 성공")
      * )
      */
     public function getExhibitionList() {
@@ -118,18 +123,39 @@ class ExhibitionController {
             'search'     => $_GET['search'] ?? null
         ];
 
+        // [수정] gallery_name 다중 검색 로직
         if (!empty($_GET['gallery_name'])) {
-            $galleryList = $this->galleryModel->getGalleries(['search' => $_GET['gallery_name']]);
-            if (!empty($galleryList)) {
-                $filters['gallery_id'] = $galleryList[0]['id'];
-            } else {
+            // 1. 쉼표로 분리 및 공백 제거
+            $gNames = explode(',', $_GET['gallery_name']);
+            $gNames = array_map('trim', $gNames);
+            
+            $targetGalleryIds = [];
+
+            // 2. 각 이름에 해당하는 갤러리 ID 수집
+            foreach ($gNames as $name) {
+                if (empty($name)) continue;
+                
+                $galleryList = $this->galleryModel->getGalleries(['search' => $name]);
+                if (!empty($galleryList)) {
+                    foreach ($galleryList as $g) {
+                        $targetGalleryIds[] = $g['id'];
+                    }
+                }
+            }
+
+            // 3. 결과가 하나도 없으면 404 리턴
+            if (empty($targetGalleryIds)) {
                 http_response_code(404);
                 header('Content-Type: application/json');
                 echo json_encode(['message' => '해당 이름의 갤러리를 찾을 수 없습니다.'], JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
                 return;
             }
+
+            // 4. 찾은 ID 배열을 필터에 추가 (중복 제거)
+            $filters['gallery_id'] = array_unique($targetGalleryIds);
         }
 
+        // Model 호출 (Model에서 WHERE IN 처리가 되어 있어야 함)
         $exhibitions = $this->model->getExhibitions($filters);
 
         // ✅ 포스터/조직 이미지 절대 URL 변환

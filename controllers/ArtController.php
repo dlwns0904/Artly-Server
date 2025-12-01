@@ -92,78 +92,104 @@ class ArtController {
 
     /**
      * @OA\Get(
-     *   path="/api/arts",
-     *   summary="작품 목록 조회",
-     *   tags={"Art"},
-     *   @OA\Parameter(
-     *     name="exhibition_title", in="query", description="[필터] 특정 전시회 이름",
-     *     @OA\Schema(type="string")
-     *   ),
-     *   @OA\Response(
-     *     response=200, description="성공",
-     *     @OA\JsonContent(type="array", @OA\Items(
-     *       @OA\Property(property="id", type="integer"),
-     *       @OA\Property(property="art_title", type="string"),
-     *       @OA\Property(property="art_image_url", type="string", description="접근 가능한 절대 URL"),
-     *       @OA\Property(property="is_liked", type="boolean")
-     *     )))
+     * path="/api/arts",
+     * summary="작품 목록 조회",
+     * tags={"Art"},
+     * @OA\Parameter(
+     * name="exhibition_title",
+     * in="query",
+     * description="[필터] 특정 전시회 이름 (쉼표(,)로 구분하여 여러 개 검색 가능)",
+     * @OA\Schema(
+     * type="string",
+     * example="모네전,피카소전"
+     * )
+     * ),
+     * @OA\Response(
+     * response=200, description="성공",
+     * @OA\JsonContent(type="array", @OA\Items(
+     * @OA\Property(property="id", type="integer"),
+     * @OA\Property(property="art_title", type="string"),
+     * @OA\Property(property="art_image_url", type="string", description="접근 가능한 절대 URL"),
+     * @OA\Property(property="is_liked", type="boolean")
+     * )))
      * )
      */
     public function getArtList() {
         $userId = \Middlewares\AuthMiddleware::getUserId();
-    
-        $searchTargetExhibitionId = null;
-    
-        // 선택적 필터: exhibition_title
-        if (!empty($_GET['exhibition_title'])) {
-            $exhibitionList = $this->exhibitionModel->getExhibitions(['search' => $_GET['exhibition_title']]);
+
+        // 1. 여러 전시회 ID를 담을 배열 초기화
+        $searchTargetExhibitionIds = []; 
+        $isSearchMode = !empty($_GET['exhibition_title']); // 검색 모드인지 플래그 설정
+
+        if ($isSearchMode) {
+            // 2. 쉼표(,)로 구분해서 배열로 변환
+            // 예: "모네전, 피카소전" -> ["모네전", " 피카소전"]
+            $rawTitles = explode(',', $_GET['exhibition_title']);
             
-            if (!empty($exhibitionList)) {
-                // 검색된 첫 번째 전시회의 ID를 타겟으로 설정
-                $searchTargetExhibitionId = $exhibitionList[0]['id'];
-            } else {
+            // 3. 각 제목 앞뒤 공백 제거 (" 피카소전" -> "피카소전")
+            $titles = array_map('trim', $rawTitles);
+
+            // 4. 각 제목에 해당하는 전시회 ID 수집
+            foreach ($titles as $title) {
+                if (empty($title)) continue;
+                
+                // 각 제목별로 검색 수행
+                $exhibitionList = $this->exhibitionModel->getExhibitions(['search' => $title]);
+                
+                if (!empty($exhibitionList)) {
+                    // 검색된 전시회들의 ID를 모두 수집 (제목 하나에 여러 전시회가 나올 수도 있으므로)
+                    foreach ($exhibitionList as $ex) {
+                        $searchTargetExhibitionIds[] = $ex['id'];
+                    }
+                }
+            }
+            
+            // 검색했는데 결과가 하나도 없는 경우
+            if (empty($searchTargetExhibitionIds)) {
                 http_response_code(404);
                 header('Content-Type: application/json');
                 echo json_encode(['message' => '해당 이름의 전시회를 찾을 수 없습니다.'], JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
                 return;
             }
         }
-    
+
         $results = [];
         $arts = $this->model->getAll();
-    
+
         foreach ($arts as $art) {
             $exhibitionIds = $this->model->getExhibitionIdByArtId($art['id']);
             $exhibitions = [];
-    
+
             foreach ($exhibitionIds as $exhibitionId) {
                 $exhibition = $this->exhibitionModel->getById($exhibitionId['exhibition_id']);
                 
-                if (!empty($searchTargetExhibitionId) && $exhibition['id'] != $searchTargetExhibitionId) {
+                // 5. [수정] 다중 ID 필터링 로직
+                // 검색 모드이고, 현재 전시회 ID가 검색된 ID 목록에 없다면 -> 제외
+                if ($isSearchMode && !in_array($exhibition['id'], $searchTargetExhibitionIds)) {
                     continue;
                 }
-    
+
                 $gallery = $this->galleryModel->getById($exhibition['gallery_id']);
                 $exhibition['gallery'] = $gallery;
                 $exhibitions[] = $exhibition;
             }
-    
-            if (!empty($searchTargetExhibitionId) && empty($exhibitions)) {
+
+            // 6. [수정] 전시회 목록이 비었으면 제외 (검색 모드일 때)
+            if ($isSearchMode && empty($exhibitions)) {
                 continue;
             }
-    
+
             $artists = $this->artistModel->getById($art['artist_id']);
             $likesInfo = $this->likeModel->getLikesWithStatusAndCount('art', $art['id'], $userId);
-    
-            // 이미지 URL 변환(상대경로 → 절대 URL)
+
             $art['art_image'] = $this->buildMediaUrl($art['art_image'] ?? null);
             $art['artist']        = $artists;
             $art['exhibitions']   = $exhibitions;
             $art['is_liked']      = $likesInfo['isLikedByUser'];
-    
+
             $results[] = $art;
         }
-    
+
         header('Content-Type: application/json');
         echo json_encode($results, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
     }
