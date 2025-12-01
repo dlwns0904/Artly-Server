@@ -96,7 +96,7 @@ class ArtController {
      *   summary="작품 목록 조회",
      *   tags={"Art"},
      *   @OA\Parameter(
-     *     name="gallery_name", in="query", description="[필터] 특정 갤러리 이름",
+     *     name="exhibition_title", in="query", description="[필터] 특정 전시회 이름",
      *     @OA\Schema(type="string")
      *   ),
      *   @OA\Response(
@@ -111,54 +111,59 @@ class ArtController {
      */
     public function getArtList() {
         $userId = \Middlewares\AuthMiddleware::getUserId();
-
-        // 선택적 필터: gallery_name
-        $searchTargetGalleryId = null;
-        if (!empty($_GET['gallery_name'])) {
-            $galleryList = $this->galleryModel->getGalleries(['search' => $_GET['gallery_name']]);
-            if (!empty($galleryList)) {
-                $searchTargetGalleryId = $galleryList[0]['id'];
+    
+        $searchTargetExhibitionId = null;
+    
+        // 선택적 필터: exhibition_title
+        if (!empty($_GET['exhibition_title'])) {
+            $exhibitionList = $this->exhibitionModel->getExhibitions(['search' => $_GET['exhibition_title']]);
+            
+            if (!empty($exhibitionList)) {
+                // 검색된 첫 번째 전시회의 ID를 타겟으로 설정
+                $searchTargetExhibitionId = $exhibitionList[0]['id'];
             } else {
                 http_response_code(404);
                 header('Content-Type: application/json');
-                echo json_encode(['message' => '해당 이름의 갤러리를 찾을 수 없습니다.'], JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
+                echo json_encode(['message' => '해당 이름의 전시회를 찾을 수 없습니다.'], JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
                 return;
             }
         }
-
+    
         $results = [];
         $arts = $this->model->getAll();
-
+    
         foreach ($arts as $art) {
             $exhibitionIds = $this->model->getExhibitionIdByArtId($art['id']);
             $exhibitions = [];
-
+    
             foreach ($exhibitionIds as $exhibitionId) {
                 $exhibition = $this->exhibitionModel->getById($exhibitionId['exhibition_id']);
-                if (!empty($searchTargetGalleryId) && $exhibition['gallery_id'] != $searchTargetGalleryId) {
+                
+                if (!empty($searchTargetExhibitionId) && $exhibition['id'] != $searchTargetExhibitionId) {
                     continue;
                 }
+    
                 $gallery = $this->galleryModel->getById($exhibition['gallery_id']);
                 $exhibition['gallery'] = $gallery;
                 $exhibitions[] = $exhibition;
             }
-
-            if (!empty($searchTargetGalleryId) && empty($exhibitions)) {
+    
+            if (!empty($searchTargetExhibitionId) && empty($exhibitions)) {
                 continue;
             }
-
+    
             $artists = $this->artistModel->getById($art['artist_id']);
             $likesInfo = $this->likeModel->getLikesWithStatusAndCount('art', $art['id'], $userId);
-
+    
             // 이미지 URL 변환(상대경로 → 절대 URL)
             $art['art_image'] = $this->buildMediaUrl($art['art_image'] ?? null);
             $art['artist']        = $artists;
             $art['exhibitions']   = $exhibitions;
             $art['is_liked']      = $likesInfo['isLikedByUser'];
-
+    
             $results[] = $art;
         }
-
+    
         header('Content-Type: application/json');
         echo json_encode($results, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
     }
