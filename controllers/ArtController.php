@@ -143,6 +143,10 @@ class ArtController {
                 $exhibitions[] = $exhibition;
             }
 
+            if (!empty($searchTargetGalleryId) && empty($exhibitions)) {
+                continue;
+            }
+
             $artists = $this->artistModel->getById($art['artist_id']);
             $likesInfo = $this->likeModel->getLikesWithStatusAndCount('art', $art['id'], $userId);
 
