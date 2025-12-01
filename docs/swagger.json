@@ -307,9 +307,9 @@
                 "operationId": "d2d79797d38f1f7b586250b4a71647f5",
                 "parameters": [
                     {
-                        "name": "gallery_name",
+                        "name": "exhibition_title",
                         "in": "query",
-                        "description": "[필터] 특정 갤러리 이름",
+                        "description": "[필터] 특정 전시회 이름",
                         "schema": {
                             "type": "string"
                         }
