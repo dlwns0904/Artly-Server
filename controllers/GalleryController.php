@@ -328,109 +328,129 @@ class GalleryController {
     }
 
     /**
- * @OA\Get(
- *     path="/api/galleries",
- *     summary="갤러리 목록 조회",
- *     tags={"Gallery"},
- *     security={{"bearerAuth":{}}},
- *     @OA\Parameter(name="regions", in="query", description="여러개이면 콤마로 구분", @OA\Schema(type="string")),
- *     @OA\Parameter(name="type", in="query", description="미술관/박물관/갤러리/복합문화공간/대안공간", @OA\Schema(type="string")),
- *     @OA\Parameter(name="latitude", in="query", @OA\Schema(type="number", format="float")),
- *     @OA\Parameter(name="longitude", in="query", @OA\Schema(type="number", format="float")),
- *     @OA\Parameter(name="distance", in="query", @OA\Schema(type="integer")),
- *     @OA\Parameter(name="search", in="query", description="gallery_name 검색", @OA\Schema(type="string")),
- *     @OA\Parameter(name="liked_only", in="query", description="내가 좋아요한 갤러리만 (true/false)", @OA\Schema(type="boolean")),
- *     @OA\Parameter(
-*         name="userId",
-*         in="query",
-*         description="해당 userId가 소유한 갤러리만 조회 (admin 또는 본인만)",
-*         @OA\Schema(type="integer")
-*     ),
- *     @OA\Response(response=200, description="조회 성공")
- * )
- */
-public function getGalleryList() {
-    $decoded = $this->auth->decodeToken();
-    $user_id = $decoded && isset($decoded->user_id) ? $decoded->user_id : null;
-    $role    = $decoded && isset($decoded->role) ? $decoded->role : null;
+     * @OA\Get(
+     * path="/api/galleries",
+     * summary="갤러리 목록 조회",
+     * tags={"Gallery"},
+     * security={{"bearerAuth":{}}},
+     * @OA\Parameter(name="regions", in="query", description="지역 필터 (여러 개면 콤마로 구분)", @OA\Schema(type="string")),
+     * @OA\Parameter(name="type", in="query", description="미술관/박물관/갤러리/복합문화공간/대안공간", @OA\Schema(type="string")),
+     * @OA\Parameter(name="latitude", in="query", @OA\Schema(type="number", format="float")),
+     * @OA\Parameter(name="longitude", in="query", @OA\Schema(type="number", format="float")),
+     * @OA\Parameter(name="distance", in="query", description="반경 거리 (km 단위)", @OA\Schema(type="integer")),
+     * @OA\Parameter(name="search", in="query", description="gallery_name 검색", @OA\Schema(type="string")),
+     * @OA\Parameter(name="liked_only", in="query", description="내가 좋아요한 갤러리만 (true/false)", @OA\Schema(type="boolean")),
+     * @OA\Parameter(
+     * name="is_console",
+     * in="query",
+     * description="[관리자용] true일 경우 본인이 관리하는 갤러리 목록만 조회 (로그인 필수)",
+     * @OA\Schema(type="boolean")
+     * ),
+     * @OA\Response(response=200, description="조회 성공")
+     * )
+     */
+    public function getGalleryList() {
+        $decoded = $this->auth->decodeToken();
+        $user_id = $decoded && isset($decoded->user_id) ? $decoded->user_id : null;
+        $role    = $decoded && isset($decoded->role) ? $decoded->role : null;
 
-    $likedOnly     = $_GET['liked_only'] ?? null;
-    $likedOnlyBool = filter_var($likedOnly, FILTER_VALIDATE_BOOLEAN);
+        $likedOnly     = $_GET['liked_only'] ?? null;
+        $likedOnlyBool = filter_var($likedOnly, FILTER_VALIDATE_BOOLEAN);
 
-    // 🔁 기존 liked_only 로직 그대로 유지
-    if ($likedOnlyBool && !$user_id) {
-        http_response_code(401);
-        header('Content-Type: application/json');
-        echo json_encode(['message' => '로그인 후 사용 가능합니다.'], JSON_UNESCAPED_UNICODE);
-        return;
-    }
-
-    $targetUserId = isset($_GET['userId']) ? (int)$_GET['userId'] : null;
-
-    // 0 이하인 값은 무시
-    if ($targetUserId !== null && $targetUserId > 0) {
-        if ($role !== 'admin' && $targetUserId !== (int)$user_id) {
-            http_response_code(403);
+        // 1. liked_only 로직 (로그인 체크)
+        if ($likedOnlyBool && !$user_id) {
+            http_response_code(401);
             header('Content-Type: application/json');
-            echo json_encode(['message' => '해당 사용자 갤러리에 접근 권한이 없습니다.'], JSON_UNESCAPED_UNICODE);
+            echo json_encode(['message' => '로그인 후 사용 가능합니다.'], JSON_UNESCAPED_UNICODE);
             return;
         }
 
-        $filters = [
-            'admin_only' => true,
-            'user_id'    => $targetUserId,
-        ];
-    } else {
-        // 기존 공개용 필터 그대로
-        $filters = [
-            'regions'   => $_GET['regions'] ?? null,
-            'type'      => $_GET['type'] ?? null,
-            'latitude'  => $_GET['latitude'] ?? null,
-            'longitude' => $_GET['longitude'] ?? null,
-            'distance'  => $_GET['distance'] ?? null,
-            'search'    => $_GET['search'] ?? null,
-            'liked_only'=> $likedOnly,
-            'user_id'   => $user_id,
-        ];
-    }
+        $targetUserId = null;
+        
+        // 2. [수정] is_console 로직 구현
+        $isConsole = $_GET['is_console'] ?? null;
+        $isConsoleBool = filter_var($isConsole, FILTER_VALIDATE_BOOLEAN);
 
-    $galleries = $this->model->getGalleries($filters);
-    if (empty($galleries)) {
-        header('Content-Type: application/json');
-        echo json_encode([], JSON_UNESCAPED_UNICODE);
-        return;
-    }
-
-    // 이미지 경로 절대 URL 변환 
-    foreach ($galleries as &$g) {
-        if (isset($g['gallery_image'])) {
-            $g['gallery_image'] = $this->toAbsoluteUrl($g['gallery_image']);
+        if ($isConsoleBool) {
+            // 콘솔 모드는 반드시 로그인이 필요함
+            if (!$user_id) {
+                http_response_code(401);
+                header('Content-Type: application/json');
+                echo json_encode(['message' => '관리자 모드는 로그인 후 사용 가능합니다.'], JSON_UNESCAPED_UNICODE);
+                return;
+            }
+            // 로그인된 사용자의 ID를 타겟으로 설정
+            $targetUserId = $user_id;
         }
-    }
-    unset($g);
 
-    // 전시 연결 
-    foreach ($galleries as &$gallery) {
-        $galleryId = is_array($gallery) ? $gallery['id'] : (is_object($gallery) ? $gallery->id : null);
-        if (!$galleryId) continue;
+        // 3. 필터 설정
+        // targetUserId가 설정되었다면 (= is_console 모드)
+        if ($targetUserId !== null && $targetUserId > 0) {
+            // 권한 체크 (본인 갤러리 or 관리자만 접근 가능)
+            if ($role !== 'admin' && $targetUserId !== (int)$user_id) {
+                http_response_code(403);
+                header('Content-Type: application/json');
+                echo json_encode(['message' => '해당 사용자 갤러리에 접근 권한이 없습니다.'], JSON_UNESCAPED_UNICODE);
+                return;
+            }
 
-        $exhibitionFilters = ['gallery_id' => $galleryId];
-        $exhibitions = $this->exhibitionModel->getExhibitions($exhibitionFilters);
-        $exhibitionCount = count($exhibitions);
-
-        if (is_array($gallery)) {
-            $gallery['exhibitions'] = $exhibitions;
-            $gallery['exhibition_count'] = $exhibitionCount;
+            $filters = [
+                'admin_only' => true,    // Model에서 본인 갤러리만 가져오도록 처리하는 플래그
+                'user_id'    => $targetUserId,
+            ];
         } else {
-            $gallery->exhibitions = $exhibitions;
-            $gallery->exhibition_count = $exhibitionCount;
+            // 일반 공개용 리스트 조회
+            $filters = [
+                'regions'   => $_GET['regions'] ?? null,
+                'type'      => $_GET['type'] ?? null,
+                'latitude'  => $_GET['latitude'] ?? null,
+                'longitude' => $_GET['longitude'] ?? null,
+                'distance'  => $_GET['distance'] ?? null,
+                'search'    => $_GET['search'] ?? null,
+                'liked_only'=> $likedOnly,
+                'user_id'   => $user_id, // 좋아요 여부 확인용
+            ];
         }
-    }
-    unset($gallery);
 
-    header('Content-Type: application/json');
-    echo json_encode($galleries, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
-}
+        $galleries = $this->model->getGalleries($filters);
+        
+        // 결과가 없으면 빈 배열 리턴
+        if (empty($galleries)) {
+            header('Content-Type: application/json');
+            echo json_encode([], JSON_UNESCAPED_UNICODE);
+            return;
+        }
+
+        // 4. 이미지 경로 절대 URL 변환 
+        foreach ($galleries as &$g) {
+            if (isset($g['gallery_image'])) {
+                $g['gallery_image'] = $this->toAbsoluteUrl($g['gallery_image']);
+            }
+        }
+        unset($g);
+
+        // 5. 전시 정보(Exhibitions) 연결 
+        foreach ($galleries as &$gallery) {
+            $galleryId = is_array($gallery) ? $gallery['id'] : (is_object($gallery) ? $gallery->id : null);
+            if (!$galleryId) continue;
+
+            $exhibitionFilters = ['gallery_id' => $galleryId];
+            $exhibitions = $this->exhibitionModel->getExhibitions($exhibitionFilters);
+            $exhibitionCount = count($exhibitions);
+
+            if (is_array($gallery)) {
+                $gallery['exhibitions'] = $exhibitions;
+                $gallery['exhibition_count'] = $exhibitionCount;
+            } else {
+                $gallery->exhibitions = $exhibitions;
+                $gallery->exhibition_count = $exhibitionCount;
+            }
+        }
+        unset($gallery);
+
+        header('Content-Type: application/json');
+        echo json_encode($galleries, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
+    }
 
     /**
      * @OA\Get(

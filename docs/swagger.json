@@ -2145,7 +2145,7 @@
                     {
                         "name": "regions",
                         "in": "query",
-                        "description": "여러개이면 콤마로 구분",
+                        "description": "지역 필터 (여러 개면 콤마로 구분)",
                         "schema": {
                             "type": "string"
                         }
@@ -2177,6 +2177,7 @@
                     {
                         "name": "distance",
                         "in": "query",
+                        "description": "반경 거리 (km 단위)",
                         "schema": {
                             "type": "integer"
                         }
@@ -2198,11 +2199,11 @@
                         }
                     },
                     {
-                        "name": "userId",
+                        "name": "is_console",
                         "in": "query",
-                        "description": "해당 userId가 소유한 갤러리만 조회 (admin 또는 본인만)",
+                        "description": "[관리자용] true일 경우 본인이 관리하는 갤러리 목록만 조회 (로그인 필수)",
                         "schema": {
-                            "type": "integer"
+                            "type": "boolean"
                         }
                     }
                 ],
