@@ -437,93 +437,85 @@ class ExhibitionController {
      * )
      */
     public function updateExhibition($id) {
+        // 1. 인증 및 사용자 ID 획득
         $user = $this->auth->authenticate();
         $userId = $user->user_id;
 
-        $userData   = $this->userModel->getById($userId);
+        // $userData는 권한 체크에 불필요하므로 제거
+        // $userData = $this->userModel->getById($userId);
+
+        // 2. 전시회 정보 조회
         $exhibition = $this->model->getById($id);
 
         if (!$exhibition) {
             http_response_code(404);
             echo json_encode(['message' => 'Exhibition not found']);
-            exit;
+            return;
         }
 
-        // [버그] 지금 APIServer_user에 gallery_id 필드가 없는데 조건문이 이렇게 작성되어 있었음!!
-        //
-        // if ($userData['gallery_id'] != $exhibition['gallery_id']) {
-        //     http_response_code(403);
-        //     echo json_encode(['message' => '권한이 없습니다.'], JSON_UNESCAPED_UNICODE);
-        //     exit;
-        // }
+        // 3. [수정 핵심] 권한 체크 로직 변경
+        // 전시회가 소속된 갤러리 정보를 가져와서, 그 갤러리의 주인인지 확인
+        $gallery = $this->galleryModel->getById($exhibition['gallery_id']);
 
+        if (!$gallery || $gallery['user_id'] != $userId) {
+            http_response_code(403);
+            echo json_encode(['message' => '권한이 없습니다. (본인의 갤러리 전시회만 수정 가능)'], JSON_UNESCAPED_UNICODE);
+            return;
+        }
+
+        // 4. 데이터 처리
         $isMultipart = isset($_SERVER['CONTENT_TYPE']) && stripos($_SERVER['CONTENT_TYPE'], 'multipart/form-data') !== false;
-
         $data = [];
 
         if ($isMultipart) {
-            if (isset($_POST['exhibition_title'])) {
-                $data['exhibition_title'] = $_POST['exhibition_title'];
-            }
-            if (isset($_POST['exhibition_description'])) {
-                $data['exhibition_description'] = $_POST['exhibition_description'];
-            }
-            if (isset($_POST['exhibition_category'])) {
-                $data['exhibition_category'] = $_POST['exhibition_category'];
-            }
-            if (isset($_POST['exhibition_start_date'])) {
-                $data['exhibition_start_date'] = $_POST['exhibition_start_date'];
-            }
-            if (isset($_POST['exhibition_end_date'])) {
-                $data['exhibition_end_date'] = $_POST['exhibition_end_date'];
-            }
-            if (isset($_POST['exhibition_start_time'])) {
-                $data['exhibition_start_time'] = $_POST['exhibition_start_time'];
-            }
-            if (isset($_POST['exhibition_end_time'])) {
-                $data['exhibition_end_time'] = $_POST['exhibition_end_time'];
-            }
-            if (isset($_POST['exhibition_location'])) {
-                $data['exhibition_location'] = $_POST['exhibition_location'];
-            }
-            if (isset($_POST['exhibition_price'])) {
-                $data['exhibition_price'] = $_POST['exhibition_price'];
-            }
-            if (isset($_POST['exhibition_tag'])) {
-                $data['exhibition_tag'] = $_POST['exhibition_tag'];
-            }
-            if (isset($_POST['exhibition_status'])) {
-                $data['exhibition_status'] = $_POST['exhibition_status'];
-            }
-            if (isset($_POST['exhibition_phone'])) {
-                $data['exhibition_phone'] = $_POST['exhibition_phone'];
-            }
-            if (isset($_POST['exhibition_homepage'])) {
-                $data['exhibition_homepage'] = $_POST['exhibition_homepage'];
+            // 반복되는 isset 체크를 배열로 처리하여 코드 간소화 (기능은 동일)
+            $fields = [
+                'exhibition_title', 'exhibition_description', 'exhibition_category',
+                'exhibition_start_date', 'exhibition_end_date', 'exhibition_start_time',
+                'exhibition_end_time', 'exhibition_location', 'exhibition_price',
+                'exhibition_tag', 'exhibition_status', 'exhibition_phone', 'exhibition_homepage'
+            ];
+
+            foreach ($fields as $field) {
+                if (isset($_POST[$field])) {
+                    $data[$field] = $_POST[$field];
+                }
             }
 
-            // 파일 처리 로직 (URL은 빈 문자열을 null로 처리)
+            // 파일 처리 로직
             if (!empty($_FILES['exhibition_poster_file']) && $_FILES['exhibition_poster_file']['error'] === UPLOAD_ERR_OK) {
                 $relPath = $this->saveUploadedImage($_FILES['exhibition_poster_file'], 'exhibition');
                 $data['exhibition_poster'] = $relPath;
-            } elseif (isset($_POST['exhibition_poster_url'])) { // URL은 빈 문자열을 'null'로 처리
+            } elseif (isset($_POST['exhibition_poster_url'])) { 
+                // URL로 이미지 변경 시 DB 컬럼명(exhibition_poster)에 맞춰 매핑
                 $data['exhibition_poster'] = $_POST['exhibition_poster_url'] ?: null;
             }
+
         } else {
-            // JSON 방식 (수정 불필요)
+            // JSON 방식
             $jsonData = json_decode(file_get_contents('php://input'), true) ?? [];
+            
+            // [추가] JSON에서도 poster_url이 들어오면 DB 컬럼명(exhibition_poster)으로 변경해줘야 함
+            if (array_key_exists('exhibition_poster_url', $jsonData)) {
+                $jsonData['exhibition_poster'] = $jsonData['exhibition_poster_url'] ?: null;
+                unset($jsonData['exhibition_poster_url']); // 기존 키 삭제
+            }
+
             $data = array_merge($data, $jsonData);
         }
 
-        // $data가 비어있으면 업데이트할 필요가 없음
+        // 변경할 데이터가 없으면 바로 성공 처리
         if (empty($data)) {
             http_response_code(200);
+            // 변경된 게 없으니 기존 데이터를 그대로 리턴
+            $exhibition['exhibition_poster'] = $this->toAbsoluteUrl($exhibition['exhibition_poster'] ?? null);
             echo json_encode(['message' => 'No fields to update', 'data' => $exhibition], JSON_UNESCAPED_UNICODE);
-            exit;
+            return;
         }
 
-        $gallery_id = $exhibition['gallery_id'];
-        $success = $this->model->update($id, $data, $gallery_id);
+        // 5. 업데이트 실행
+        // update 함수에 $gallery_id를 넘기는 것은 Model 내부 로직에 따라 필요할 수 있으니 유지
+        $success = $this->model->update($id, $data, $exhibition['gallery_id']);
 
         if ($success) {
             $updatedExhibition = $this->model->getById($id);
@@ -629,19 +621,41 @@ class ExhibitionController {
      * )
      */
     public function registerArts($id) {
+        // 1. 인증 및 사용자 ID 획득
         $user = $this->auth->authenticate();
-        $userId = $user->user_id;
+        $userId = $this->auth->getUserId();
 
-        $userData = $this->userModel->getById($userId);
+        // 2. 전시회 정보 가져오기
         $exhibition = $this->model->getById($id);
 
-        if ($userData['gallery_id'] != $exhibition['gallery_id']) {
-            http_response_code(403);
-            echo json_encode(['message' => '권한이 없습니다.'], JSON_UNESCAPED_UNICODE);
-            exit;
+        if (!$exhibition) {
+            http_response_code(404);
+            echo json_encode(['message' => '해당 전시회를 찾을 수 없습니다.'], JSON_UNESCAPED_UNICODE);
+            return; // exit 대신 return 권장
         }
 
+        // 3. [수정 핵심] 권한 체크 로직 변경
+        // 전시회가 소속된 '갤러리' 정보를 가져옵니다.
+        $gallery = $this->galleryModel->getById($exhibition['gallery_id']);
+
+        // 갤러리가 존재하지 않거나, 갤러리의 주인(user_id)이 현재 사용자가 아니라면 차단
+        // (만약 관리자(admin)는 통과시키고 싶다면 $user->role === 'admin' 조건 추가 가능)
+        if (!$gallery || $gallery['user_id'] != $userId) {
+            http_response_code(403);
+            echo json_encode(['message' => '이 전시회에 작품을 등록할 권한이 없습니다.'], JSON_UNESCAPED_UNICODE);
+            return;
+        }
+
+        // 4. 데이터 등록
         $data = json_decode(file_get_contents('php://input'), true);
+        
+        // 입력값 유효성 검사 (Swagger와 일치하도록)
+        if (empty($data['art_id'])) {
+            http_response_code(400);
+            echo json_encode(['message' => 'art_id is required'], JSON_UNESCAPED_UNICODE);
+            return;
+        }
+
         $registeredArt = $this->model->registerArt($id, $data);
 
         if ($registeredArt) {
@@ -700,31 +714,39 @@ class ExhibitionController {
      * )
      */
     public function registerArtists($id) {
+        // 1. 인증 및 사용자 ID 획득
         $user = $this->auth->authenticate();
         $userId = $user->user_id;
 
-        $userData   = $this->userModel->getById($userId);
+        // $userData는 권한 체크에 필요 없으므로 제거해도 됩니다.
+        // $userData = $this->userModel->getById($userId); 
+
+        // 2. 전시회 정보 가져오기
         $exhibition = $this->model->getById($id);
 
         if (!$exhibition) {
             http_response_code(404);
             echo json_encode(['message' => 'Exhibition not found'], JSON_UNESCAPED_UNICODE);
-            exit;
+            return; // exit 대신 return 사용 권장
         }
 
-        // 해당 전시 소속 갤러리 유저만 등록 가능
-        if ($userData['gallery_id'] != $exhibition['gallery_id']) {
+        // 3. [수정 핵심] 권한 체크
+        // 전시회가 소속된 갤러리 정보를 가져와서, 그 갤러리의 주인(user_id)인지 확인
+        $gallery = $this->galleryModel->getById($exhibition['gallery_id']);
+
+        if (!$gallery || $gallery['user_id'] != $userId) {
             http_response_code(403);
-            echo json_encode(['message' => '권한이 없습니다.'], JSON_UNESCAPED_UNICODE);
-            exit;
+            echo json_encode(['message' => '권한이 없습니다. (본인의 갤러리 전시회만 수정 가능)'], JSON_UNESCAPED_UNICODE);
+            return;
         }
 
+        // 4. 데이터 처리 (기존 로직 유지)
         $data = json_decode(file_get_contents('php://input'), true);
 
         if (!isset($data['artist_ids']) || !is_array($data['artist_ids'])) {
             http_response_code(400);
             echo json_encode(['message' => 'artist_ids (array)를 전달해 주세요.'], JSON_UNESCAPED_UNICODE);
-            exit;
+            return;
         }
 
         // 숫자로 캐스팅 + 0 이하 제거 (PHP 7.3 호환)
@@ -737,8 +759,8 @@ class ExhibitionController {
 
         if (empty($artistIds)) {
             http_response_code(400);
-            echo json_encode(['message' => 'artist_ids 가 비어 있습니다.'], JSON_UNESCAPED_UNICODE);
-            exit;
+            echo json_encode(['message' => '유효한 artist_ids 가 없습니다.'], JSON_UNESCAPED_UNICODE);
+            return;
         }
 
         try {
@@ -746,18 +768,21 @@ class ExhibitionController {
         } catch (\Exception $e) {
             http_response_code(500);
             echo json_encode(['message' => 'Failed to register Artist', 'error' => $e->getMessage()]);
-            exit;
+            return;
         }
 
+        // 성공 응답
         if ($registered && count($registered) > 0) {
             http_response_code(201);
             echo json_encode([
-                'message' => 'Artist registered successfully',
+                'message' => 'Artists registered successfully',
                 'data'    => $registered
             ], JSON_UNESCAPED_UNICODE);
         } else {
+            // DB에는 성공적으로 다녀왔으나, 이미 등록된 작가들이라 추가된 게 0개일 수도 있음
+            // 상황에 따라 200 OK로 처리하기도 함. 여기서는 500 유지.
             http_response_code(500);
-            echo json_encode(['message' => 'Failed to register Artist'], JSON_UNESCAPED_UNICODE);
+            echo json_encode(['message' => 'Failed to register Artist or No new artists added'], JSON_UNESCAPED_UNICODE);
         }
     }
 }

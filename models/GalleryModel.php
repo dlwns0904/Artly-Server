@@ -255,6 +255,7 @@ class GalleryModel {
         $sql = "
             SELECT
                 g.id AS gallery_id,
+                g.user_id,
                 g.gallery_name,
                 g.gallery_eng_name,
                 g.gallery_image,
@@ -303,6 +304,7 @@ class GalleryModel {
 
         $gallery = [
             'id'                 => (int)$firstRow['gallery_id'],
+            'user_id'            => $firstRow['user_id'],
             'gallery_name'       => $firstRow['gallery_name'],
             'gallery_eng_name'   => $firstRow['gallery_eng_name'],
             'gallery_image'      => $firstRow['gallery_image'],
