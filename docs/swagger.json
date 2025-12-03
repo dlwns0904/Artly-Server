@@ -1060,6 +1060,73 @@
                 }
             }
         },
+        "/api/auth/withdraw": {
+            "delete": {
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "회원탈퇴",
+                "description": "보안을 위해 비밀번호 확인 후 계정을 삭제합니다.",
+                "operationId": "fe0ccfe75588b48872c5740545b25e9c",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "properties": {
+                                    "login_id": {
+                                        "description": "삭제할 계정 아이디",
+                                        "type": "string"
+                                    },
+                                    "login_pwd": {
+                                        "description": "본인 확인용 비밀번호",
+                                        "type": "string"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "회원탈퇴 성공",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "User account deleted successfully"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "비밀번호 불일치 또는 존재하지 않는 계정",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Invalid credentials"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "서버 내부 오류 (DB 삭제 실패 등)"
+                    }
+                }
+            }
+        },
         "/api/books/{id}": {
             "get": {
                 "tags": [
