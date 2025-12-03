@@ -174,4 +174,11 @@ class UserModel {
             ':id'         => $id
         ]);
     }
+
+    # 회원 탈퇴 (유저 삭제)
+    public function delete($loginId) {
+        // login_id를 기준으로 삭제합니다.
+        $stmt = $this->pdo->prepare("DELETE FROM APIServer_user WHERE login_id = ?");
+        return $stmt->execute([$loginId]);
+    }
 }

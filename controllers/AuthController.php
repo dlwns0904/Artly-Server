@@ -150,6 +150,72 @@ class AuthController {
         }
     }
 
+    /**
+     * @OA\Delete(
+     * path="/api/auth/withdraw",
+     * summary="회원탈퇴",
+     * description="보안을 위해 비밀번호 확인 후 계정을 삭제합니다.",
+     * tags={"Auth"},
+     * @OA\RequestBody(
+     * required=true,
+     * @OA\JsonContent(
+     * @OA\Property(property="login_id", type="string", description="삭제할 계정 아이디"),
+     * @OA\Property(property="login_pwd", type="string", description="본인 확인용 비밀번호")
+     * )
+     * ),
+     * @OA\Response(
+     * response=200,
+     * description="회원탈퇴 성공",
+     * @OA\JsonContent(
+     * @OA\Property(property="message", type="string", example="User account deleted successfully")
+     * )
+     * ),
+     * @OA\Response(
+     * response=401,
+     * description="비밀번호 불일치 또는 존재하지 않는 계정",
+     * @OA\JsonContent(
+     * @OA\Property(property="message", type="string", example="Invalid credentials")
+     * )
+     * ),
+     * @OA\Response(
+     * response=500,
+     * description="서버 내부 오류 (DB 삭제 실패 등)"
+     * )
+     * )
+     */
+    public function withdraw() {
+        $data = json_decode(file_get_contents('php://input'), true);
+        
+        // 데이터 유효성 검사
+        if (!isset($data['login_id']) || !isset($data['login_pwd'])) {
+            http_response_code(400);
+            echo json_encode(['message' => 'Missing login_id or login_pwd']);
+            return;
+        }
+
+        // 1. 사용자 존재 여부 및 비밀번호 확인 (재검증)
+        $user = $this->model->getByLoginId($data['login_id']);
+
+        if (!$user || $user['login_pwd'] !== $data['login_pwd']) {
+            http_response_code(401); // Unauthorized
+            echo json_encode(['message' => 'Invalid credentials - Password does not match']);
+            return;
+        }
+
+        // 2. 삭제 실행
+        $isDeleted = $this->model->delete($data['login_id']);
+
+        if ($isDeleted) {
+            http_response_code(200);
+            echo json_encode([
+                'message' => 'User account deleted successfully'
+            ], JSON_UNESCAPED_UNICODE);
+        } else {
+            http_response_code(500);
+            echo json_encode(['message' => 'Account deletion failed']);
+        }
+    }
+
     public function createJwtToken($user, bool $isAdmin ,$time) {
         $payload = [
                     'iat' => time(),                 // 발급 시간
@@ -163,5 +229,7 @@ class AuthController {
         $jwt = JWT::encode($payload, $this->jwtSecret, 'HS256');
         return $jwt;
     }
+
+
 }
 

@@ -150,6 +150,9 @@ elseif ($requestMethod === 'POST' && $requestUri === '/api/auth/register') {
 elseif ($requestMethod === 'POST' && $requestUri === '/api/auth/login') {
     (new AuthController())->login();
 }
+elseif ($requestMethod === 'DELETE' && $requestUri === '/api/auth/withdraw') {
+    (new AuthController())->withdraw();
+}
 elseif ($requestMethod === 'PUT' && $requestUri === '/api/users/me') {
     (new UserController())->updateMe();
 }
