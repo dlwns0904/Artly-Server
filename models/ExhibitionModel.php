@@ -287,7 +287,7 @@ class ExhibitionModel {
 
         // 2️⃣ 참여 작가 조회
         $stmt = $this->pdo->prepare("
-            SELECT a.artist_name, a.id
+            SELECT a.*
             FROM APIServer_exhibition_participation ep
             JOIN APIServer_artist a ON ep.artist_id = a.id
             WHERE ep.exhibition_id = :id
