@@ -84,6 +84,12 @@ elseif ($requestMethod === 'POST' && preg_match('#^/api/exhibitions/(\d+)/artist
 elseif ($requestMethod === 'POST' && preg_match('#^/api/exhibitions/(\d+)/arts$#', $requestUri, $m)) {
     (new ExhibitionController())->registerArts($m[1]);
 }
+elseif ($requestMethod === 'DELETE' && preg_match('#^/api/exhibitions/(\d+)/arts/(\d+)$#', $requestUri, $m)) {
+    (new ExhibitionController())->deleteExhibitionArt($m[1], $m[2]);
+}
+elseif ($requestMethod === 'DELETE' && preg_match('#^/api/exhibitions/(\d+)/artists/(\d+)$#', $requestUri, $m)) {
+    (new ExhibitionController())->deleteExhibitionArtist($m[1], $m[2]);
+}
 
 
 /* ───────────────────────── Art ───────────────────────── */
