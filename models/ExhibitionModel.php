@@ -293,7 +293,7 @@ class ExhibitionModel {
             WHERE ep.exhibition_id = :id
         ");
         $stmt->execute([':id' => $id]);
-        $artists = $stmt->fetchAll(PDO::FETCH_COLUMN);
+        $artists = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         // 3️⃣ 작품 artworks 조회
         $stmt = $this->pdo->prepare("
