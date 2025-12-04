@@ -2201,6 +2201,98 @@
                 ]
             }
         },
+        "/api/exhibitions/{id}/arts/{art_id}": {
+            "delete": {
+                "tags": [
+                    "Exhibition"
+                ],
+                "summary": "전시회 작품 삭제 (연결 해제)",
+                "description": "전시회 목록에서 특정 작품을 제외합니다. 작품 데이터 자체가 삭제되는 것이 아니라 매핑만 해제됩니다.",
+                "operationId": "fde4ce605a2226342b85394205031130",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "전시회 ID",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "art_id",
+                        "in": "path",
+                        "description": "삭제할 작품 ID",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "삭제 성공"
+                    },
+                    "403": {
+                        "description": "권한 없음"
+                    },
+                    "404": {
+                        "description": "전시회 없음"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
+        "/api/exhibitions/{id}/artists/{artist_id}": {
+            "delete": {
+                "tags": [
+                    "Exhibition"
+                ],
+                "summary": "전시회 작가 삭제 (연결 해제)",
+                "description": "전시회 참여 작가 목록에서 특정 작가를 제외합니다.",
+                "operationId": "ef2c0ddee54f8b26a5332d7d55f75af1",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "전시회 ID",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "artist_id",
+                        "in": "path",
+                        "description": "삭제할 작가 ID",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "삭제 성공"
+                    },
+                    "403": {
+                        "description": "권한 없음"
+                    },
+                    "404": {
+                        "description": "전시회 없음"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
         "/api/galleries": {
             "get": {
                 "tags": [

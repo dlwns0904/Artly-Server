@@ -785,4 +785,100 @@ class ExhibitionController {
             echo json_encode(['message' => 'Failed to register Artist or No new artists added'], JSON_UNESCAPED_UNICODE);
         }
     }
+
+    /**
+     * @OA\Delete(
+     * path="/api/exhibitions/{id}/arts/{art_id}",
+     * summary="전시회 작품 삭제 (연결 해제)",
+     * description="전시회 목록에서 특정 작품을 제외합니다. 작품 데이터 자체가 삭제되는 것이 아니라 매핑만 해제됩니다.",
+     * tags={"Exhibition"},
+     * security={{"bearerAuth":{}}},
+     * @OA\Parameter(name="id", in="path", required=true, description="전시회 ID", @OA\Schema(type="integer")),
+     * @OA\Parameter(name="art_id", in="path", required=true, description="삭제할 작품 ID", @OA\Schema(type="integer")),
+     * @OA\Response(response=200, description="삭제 성공"),
+     * @OA\Response(response=403, description="권한 없음"),
+     * @OA\Response(response=404, description="전시회 없음")
+     * )
+     */
+    public function deleteExhibitionArt($id, $artId) {
+        // 1. 인증
+        $user = $this->auth->authenticate();
+        $userId = $user->user_id;
+
+        // 2. 전시회 정보 조회
+        $exhibition = $this->model->getById($id);
+        if (!$exhibition) {
+            http_response_code(404);
+            echo json_encode(['message' => 'Exhibition not found'], JSON_UNESCAPED_UNICODE);
+            return;
+        }
+
+        // 3. 권한 체크 (갤러리 주인인지)
+        $gallery = $this->galleryModel->getById($exhibition['gallery_id']);
+        if (!$gallery || $gallery['user_id'] != $userId) {
+            http_response_code(403);
+            echo json_encode(['message' => '권한이 없습니다.'], JSON_UNESCAPED_UNICODE);
+            return;
+        }
+
+        // 4. 삭제 실행 (Model 호출)
+        // deleteExhibitionArt 메서드는 Model에 추가해야 합니다.
+        $success = $this->model->deleteExhibitionArt($id, $artId);
+
+        if ($success) {
+            http_response_code(200);
+            echo json_encode(['message' => 'Artwork removed from exhibition successfully'], JSON_UNESCAPED_UNICODE);
+        } else {
+            http_response_code(500); // 404일 수도 있으나, 서버 로직상 실패로 간주
+            echo json_encode(['message' => 'Failed to remove artwork'], JSON_UNESCAPED_UNICODE);
+        }
+    }
+
+    /**
+     * @OA\Delete(
+     * path="/api/exhibitions/{id}/artists/{artist_id}",
+     * summary="전시회 작가 삭제 (연결 해제)",
+     * description="전시회 참여 작가 목록에서 특정 작가를 제외합니다.",
+     * tags={"Exhibition"},
+     * security={{"bearerAuth":{}}},
+     * @OA\Parameter(name="id", in="path", required=true, description="전시회 ID", @OA\Schema(type="integer")),
+     * @OA\Parameter(name="artist_id", in="path", required=true, description="삭제할 작가 ID", @OA\Schema(type="integer")),
+     * @OA\Response(response=200, description="삭제 성공"),
+     * @OA\Response(response=403, description="권한 없음"),
+     * @OA\Response(response=404, description="전시회 없음")
+     * )
+     */
+    public function deleteExhibitionArtist($id, $artistId) {
+        // 1. 인증
+        $user = $this->auth->authenticate();
+        $userId = $user->user_id;
+
+        // 2. 전시회 정보 조회
+        $exhibition = $this->model->getById($id);
+        if (!$exhibition) {
+            http_response_code(404);
+            echo json_encode(['message' => 'Exhibition not found'], JSON_UNESCAPED_UNICODE);
+            return;
+        }
+
+        // 3. 권한 체크 (갤러리 주인인지)
+        $gallery = $this->galleryModel->getById($exhibition['gallery_id']);
+        if (!$gallery || $gallery['user_id'] != $userId) {
+            http_response_code(403);
+            echo json_encode(['message' => '권한이 없습니다.'], JSON_UNESCAPED_UNICODE);
+            return;
+        }
+
+        // 4. 삭제 실행 (Model 호출)
+        // deleteExhibitionArtist 메서드는 Model에 추가해야 합니다.
+        $success = $this->model->deleteExhibitionArtist($id, $artistId);
+
+        if ($success) {
+            http_response_code(200);
+            echo json_encode(['message' => 'Artist removed from exhibition successfully'], JSON_UNESCAPED_UNICODE);
+        } else {
+            http_response_code(500);
+            echo json_encode(['message' => 'Failed to remove artist'], JSON_UNESCAPED_UNICODE);
+        }
+    }
 }

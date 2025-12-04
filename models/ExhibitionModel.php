@@ -422,4 +422,38 @@ class ExhibitionModel {
 
         return $result;
     }
+
+    // 전시회-작품 연결 해제 (테이블: APIServer_exhibition_art)
+    public function deleteExhibitionArt($exhibitionId, $artId) {
+        $stmt = $this->pdo->prepare("
+            DELETE FROM APIServer_exhibition_art 
+            WHERE exhibition_id = :exhibition_id 
+            AND art_id = :art_id
+        ");
+        
+        $stmt->execute([
+            ':exhibition_id' => $exhibitionId, 
+            ':art_id' => $artId
+        ]);
+        
+        // rowCount()가 0보다 크면 삭제된 행이 있다는 뜻이므로 성공
+        return $stmt->rowCount() > 0;
+    }
+
+    // 전시회-작가 연결 해제 (테이블: APIServer_exhibition_participation)
+    public function deleteExhibitionArtist($exhibitionId, $artistId) {
+        // 보내주신 코드에 따라 테이블명을 APIServer_exhibition_participation 로 맞췄습니다.
+        $stmt = $this->pdo->prepare("
+            DELETE FROM APIServer_exhibition_participation 
+            WHERE exhibition_id = :exhibition_id 
+            AND artist_id = :artist_id
+        ");
+        
+        $stmt->execute([
+            ':exhibition_id' => $exhibitionId, 
+            ':artist_id' => $artistId
+        ]);
+        
+        return $stmt->rowCount() > 0;
+    }
 }
