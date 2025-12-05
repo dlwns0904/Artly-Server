@@ -118,50 +118,49 @@ class GalleryModel {
     }
 
     public function getGalleries($filters = []) {
-    $sql = "
-        SELECT
-            g.id AS gallery_id,
-            g.gallery_name,
-            g.gallery_eng_name,
-            g.gallery_image,
-            g.gallery_latitude,
-            g.gallery_longitude,
-            g.gallery_address,
-            g.gallery_category,
-            DATE_FORMAT(g.gallery_start_time, '%H:%i') AS gallery_start_time,
-            DATE_FORMAT(g.gallery_end_time, '%H:%i') AS gallery_end_time,
-            g.gallery_closed_day,
-            g.gallery_phone,
-            g.gallery_email,
-            g.gallery_homepage,
-            g.gallery_sns,
-            IFNULL(lc.like_count, 0) AS like_count,
-            IF(EXISTS (
-                SELECT 1 FROM APIServer_gallery_like l
-                WHERE l.gallery_id = g.id AND l.user_id = :user_id_for_like
-            ), 1, 0) AS is_liked
-        FROM APIServer_gallery g
-        LEFT JOIN (
-            SELECT gallery_id, COUNT(*) AS like_count
-            FROM APIServer_gallery_like
-            GROUP BY gallery_id
-        ) lc ON g.id = lc.gallery_id
-        WHERE 1=1
-    ";
-
-    $user_id   = $filters['user_id'] ?? 0;
-    $adminOnly = !empty($filters['admin_only']);   // 🔥 콘솔 모드에서만 true
-    $params = [':user_id_for_like' => $user_id];
-
-    // 🔥 콘솔(admin_only)일 때: 내가 관리하는 갤러리만
-    if ($adminOnly && $user_id > 0) {
-        $sql .= " AND g.user_id = :owner_id";
-        $params[':owner_id'] = $user_id;
-        // ※ 이때는 아래의 regions/type/search/거리/liked_only 필터는 적용 안 함
-    } else {
-        // ✅ 기존 필터 로직 그대로 유지
-
-        // 찜한 것만
+        $sql = "
+            SELECT
+                g.id AS gallery_id,
+                g.gallery_name,
+                g.gallery_eng_name,
+                g.gallery_image,
+                g.gallery_latitude,
+                g.gallery_longitude,
+                g.gallery_address,
+                g.gallery_category,
+                DATE_FORMAT(g.gallery_start_time, '%H:%i') AS gallery_start_time,
+                DATE_FORMAT(g.gallery_end_time, '%H:%i') AS gallery_end_time,
+                g.gallery_closed_day,
+                g.gallery_phone,
+                g.gallery_email,
+                g.gallery_homepage,
+                g.gallery_sns,
+                IFNULL(lc.like_count, 0) AS like_count,
+                IF(EXISTS (
+                    SELECT 1 FROM APIServer_gallery_like l
+                    WHERE l.gallery_id = g.id AND l.user_id = :user_id_for_like
+                ), 1, 0) AS is_liked
+            FROM APIServer_gallery g
+            LEFT JOIN (
+                SELECT gallery_id, COUNT(*) AS like_count
+                FROM APIServer_gallery_like
+                GROUP BY gallery_id
+            ) lc ON g.id = lc.gallery_id
+            WHERE 1=1
+        ";
+    
+        $user_id   = $filters['user_id'] ?? 0;
+        $adminOnly = !empty($filters['admin_only']);
+        $params = [':user_id_for_like' => $user_id];
+    
+        // 1️⃣ [관리자 모드] 내 갤러리만 보기
+        // (else를 제거하여 이 조건이 적용된 후에도 아래 검색 필터가 동작하도록 함)
+        if ($adminOnly && $user_id > 0) {
+            $sql .= " AND g.user_id = :owner_id";
+            $params[':owner_id'] = $user_id;
+        }
+    
+        // 2️⃣ [찜한 목록]
         $likedOnly = !empty($filters['liked_only']) && filter_var($filters['liked_only'], FILTER_VALIDATE_BOOLEAN);
         if ($likedOnly && $user_id > 0) {
             $sql .= " AND EXISTS (
@@ -170,8 +169,15 @@ class GalleryModel {
             )";
             $params[':user_id_only'] = $user_id;
         }
-
-        // 지역 필터 (쉼표 구분)
+    
+        // 3️⃣ [검색어] (이제 관리자 모드에서도 동작합니다)
+        if (!empty($filters['search'])) {
+            $sql .= " AND (g.gallery_name LIKE :search OR g.gallery_address LIKE :search)";
+            // 이름뿐만 아니라 주소 검색도 원하시면 OR 조건을 유지, 이름만 원하면 뒤쪽 제거
+            $params[':search'] = '%' . $filters['search'] . '%';
+        }
+    
+        // 4️⃣ [지역 필터]
         if (!empty($filters['regions'])) {
             $regionList = explode(',', $filters['regions']);
             $regionConds = [];
@@ -184,20 +190,14 @@ class GalleryModel {
                 $sql .= " AND (" . implode(" OR ", $regionConds) . ")";
             }
         }
-
-        // 타입 필터
+    
+        // 5️⃣ [타입 필터]
         if (!empty($filters['type'])) {
             $sql .= " AND g.gallery_category = :type";
             $params[':type'] = $filters['type'];
         }
-
-        // 검색어
-        if (!empty($filters['search'])) {
-            $sql .= " AND g.gallery_name LIKE :search";
-            $params[':search'] = '%' . $filters['search'] . '%';
-        }
-
-        // 거리 필터 (미터)
+    
+        // 6️⃣ [거리 필터]
         if (!empty($filters['latitude']) && !empty($filters['longitude']) && !empty($filters['distance'])) {
             $sql .= " AND (
                 6371000 * ACOS(
@@ -210,43 +210,36 @@ class GalleryModel {
             $params[':longitude'] = $filters['longitude'];
             $params[':distance']  = $filters['distance'];
         }
+    
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute($params);
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC); // FETCH_ASSOC 명시 권장
+    
+        $results = [];
+        foreach ($rows as $row) {
+            $results[] = [
+                'id'                 => (int)$row['gallery_id'],
+                'gallery_name'       => $row['gallery_name'],
+                'gallery_eng_name'   => $row['gallery_eng_name'],
+                'gallery_image'      => $row['gallery_image'],
+                'gallery_latitude'   => isset($row['gallery_latitude']) ? (float)$row['gallery_latitude'] : null,
+                'gallery_longitude'  => isset($row['gallery_longitude']) ? (float)$row['gallery_longitude'] : null,
+                'gallery_address'    => $row['gallery_address'],
+                'gallery_category'   => $row['gallery_category'],
+                'gallery_start_time' => $row['gallery_start_time'],
+                'gallery_end_time'   => $row['gallery_end_time'],
+                'gallery_closed_day' => $row['gallery_closed_day'],
+                'gallery_phone'      => $row['gallery_phone'],
+                'gallery_email'      => $row['gallery_email'],
+                'gallery_homepage'   => $row['gallery_homepage'],
+                'gallery_sns'        => $row['gallery_sns'],
+                'like_count'         => (int)$row['like_count'],
+                'is_liked'           => (bool)$row['is_liked'],
+            ];
+        }
+    
+        return $results;
     }
-
-    $stmt = $this->pdo->prepare($sql);
-    $stmt->execute($params);
-    $rows = $stmt->fetchAll();
-
-    $results = [];
-    foreach ($rows as $row) {
-        $results[] = [
-            'id'                 => (int)$row['gallery_id'],
-            'gallery_name'       => $row['gallery_name'],
-            'gallery_eng_name'   => $row['gallery_eng_name'],
-            'gallery_image'      => $row['gallery_image'],
-            'gallery_latitude'   => isset($row['gallery_latitude']) ? (float)$row['gallery_latitude'] : null,
-            'gallery_longitude'  => isset($row['gallery_longitude']) ? (float)$row['gallery_longitude'] : null,
-            'gallery_address'    => $row['gallery_address'],
-            'gallery_category'   => $row['gallery_category'],
-            'gallery_start_time' => $row['gallery_start_time'],
-            'gallery_end_time'   => $row['gallery_end_time'],
-            'gallery_closed_day' => $row['gallery_closed_day'],
-            'is_liked'           => (bool)$row['is_liked'],
-            'gallery_phone'      => $row['gallery_phone'],
-            'gallery_email'      => $row['gallery_email'],
-            'gallery_homepage'   => $row['gallery_homepage'],
-            'gallery_sns'        => $row['gallery_sns'],
-            'gallery_end_time'   => $row['gallery_end_time'],   // 원래 있던 중복도 그대로
-            'gallery_phone'      => $row['gallery_phone'],
-            'gallery_email'      => $row['gallery_email'],
-            'gallery_homepage'   => $row['gallery_homepage'],
-            'gallery_sns'        => $row['gallery_sns'],
-            'like_count'         => (int)$row['like_count'],
-            'is_liked'           => (bool)$row['is_liked'],
-        ];
-    }
-
-    return $results;
-}
 
     /**
      * 갤러리 단건 조회 (+ 전시 일부 정보)

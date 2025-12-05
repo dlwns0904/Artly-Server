@@ -397,6 +397,7 @@ class GalleryController {
             $filters = [
                 'admin_only' => true,    // Model에서 본인 갤러리만 가져오도록 처리하는 플래그
                 'user_id'    => $targetUserId,
+                'search'     => $_GET['search'] ?? null,
             ];
         } else {
             // 일반 공개용 리스트 조회
