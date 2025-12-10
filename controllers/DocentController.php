@@ -13,8 +13,11 @@ use OpenApi\Annotations as OA;
  */
 class DocentController
 {
-    private DocentModel $service;
-    private AuthMiddleware $auth;
+     /** @var DocentModel */
+    private $service;
+
+    /** @var AuthMiddleware */
+    private $auth;
 
     public function __construct()
     {

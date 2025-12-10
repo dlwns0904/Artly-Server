@@ -5,10 +5,17 @@ use PDO;
 
 class DocentModel
 {
-    private PDO $pdo;
-    private string $mediaBaseDir;
-    private ?string $googleApiKey;
-    private ?string $hedraApiKey;
+     /** @var PDO */
+    private $pdo;
+
+    /** @var string */
+    private $mediaBaseDir;
+
+    /** @var string|null */
+    private $googleApiKey;
+
+    /** @var string|null */
+    private $hedraApiKey;
 
     private const HEDRA_BASE_URL = 'https://api.hedra.com/web-app/public';
     private const HEDRA_MODEL_ID = 'd1dd37a3-e39a-4854-a298-6510289f9cf2';
