@@ -31,8 +31,13 @@ class DocentModel
         $base = realpath(__DIR__ . '/../media');
         $this->mediaBaseDir = $base ?: (__DIR__ . '/../media');
 
-        $this->googleApiKey = getenv('GOOGLE_API_KEY') ?: null;
-        $this->hedraApiKey  = getenv('HEDRA_API_KEY') ?: null;
+        $this->googleApiKey = $_ENV['GOOGLE_API_KEY']
+        ?? getenv('GOOGLE_API_KEY')
+        ?: null;
+        $this->hedraApiKey  = $this->hedraApiKey  =
+        $_ENV['HEDRA_API_KEY']
+        ?? getenv('HEDRA_API_KEY')
+        ?: null;
     }
 
     /**
