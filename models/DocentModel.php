@@ -490,7 +490,7 @@ class DocentModel
      */
     private function hedraWaitForVideoUrl(
         string $generationId,
-        int $maxTries = 20,
+        int $maxTries = 40,
         int $intervalSec = 5
     ): string {
         $url = self::HEDRA_BASE_URL . '/generations/' . urlencode($generationId) . '/status';
