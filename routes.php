@@ -28,7 +28,7 @@ use Controllers\ImageGenerateConsoleController;
 use Controllers\UploadController;
 use Controllers\InvitationGenerateConsoleController;
 use Controllers\NotificationController;
-
+use Controllers\DocentController;
 
 
 $requestMethod  = $_SERVER['REQUEST_METHOD'];
@@ -108,6 +108,17 @@ elseif ($requestMethod === 'PATCH' && preg_match('#^/api/arts/(\d+)$#', $request
 }
 elseif ($requestMethod === 'DELETE' && preg_match('#^/api/arts/(\d+)$#', $requestUri, $m)) {
     (new ArtController())->deleteArt($m[1]);
+}
+
+
+/* ───────────────────────── Docent ───────────────────────── */
+
+elseif ($requestMethod === 'POST' && preg_match('#^/api/docents/(\d+)$#', $requestUri, $m)) {
+    // DocentController::generate($params) 는 ['id' => ...] 배열을 기대하므로 이렇게 전달
+    (new DocentController())->generate(['id' => $m[1]]);
+}
+elseif ($requestMethod === 'GET' && preg_match('#^/api/docents/(\d+)$#', $requestUri, $m)) {
+    (new DocentController())->show(['id' => $m[1]]);
 }
 
 
@@ -325,4 +336,3 @@ else {
     header('Content-Type: application/json');
     echo json_encode(['error' => 'Not found'], JSON_UNESCAPED_UNICODE);
 }
-
