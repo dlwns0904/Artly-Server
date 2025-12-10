@@ -5,7 +5,7 @@ use PDO;
 
 class DocentModel
 {
-     /** @var PDO */
+    /** @var PDO */
     private $pdo;
 
     /** @var string */
@@ -32,22 +32,25 @@ class DocentModel
         $this->mediaBaseDir = $base ?: (__DIR__ . '/../media');
 
         $this->googleApiKey = $_ENV['GOOGLE_API_KEY']
-        ?? getenv('GOOGLE_API_KEY')
-        ?: null;
-        $this->hedraApiKey  = $this->hedraApiKey  =
-        $_ENV['HEDRA_API_KEY']
-        ?? getenv('HEDRA_API_KEY')
-        ?: null;
+            ?? getenv('GOOGLE_API_KEY')
+            ?: null;
+
+        $this->hedraApiKey  =
+            $_ENV['HEDRA_API_KEY']
+            ?? getenv('HEDRA_API_KEY')
+            ?: null;
     }
 
     /**
      * 도슨트 생성 (audio | video)
      *
      * @param int         $artId
-     * @param string      $type            'audio' | 'video'
-     * @param string|null $script          도슨트 텍스트 (없으면 DB 내용 사용)
-     * @param string|null $avatarImageUrl  아바타 이미지 URL (video용 옵션)
-     * @param string|null $artName         파일명에 넣을 작품명 (없으면 art_title 사용)
+     * @param string      $type               'audio' | 'video'
+     * @param string|null $script             도슨트 텍스트 (없으면 DB 내용 사용)
+     * @param string|null $avatarImageUrl     아바타 이미지 URL(/media/... 또는 상대경로)
+     * @param string|null $artName            파일명에 넣을 작품명 (없으면 art_title 사용)
+     * @param string|null $uploadedImagePath  multipart 업로드된 이미지 실제 경로 (video 전용)
+     *
      * @return array{mode:string,audio_path:?string,video_path:?string}
      * @throws \Exception
      */
@@ -56,7 +59,8 @@ class DocentModel
         string $type,
         ?string $script,
         ?string $avatarImageUrl,
-        ?string $artName = null
+        ?string $artName = null,
+        ?string $uploadedImagePath = null
     ): array {
         $art = $this->findArtById($artId);
         if (!$art) {
@@ -101,7 +105,14 @@ class DocentModel
         }
 
         // (1) 사용할 이미지 파일 경로
-        $imageFilePath = $this->getArtImageFilePath($art, $avatarImageUrl);
+        // - 업로드 이미지가 있다면 그 경로 우선
+        // - 없으면 avatarImageUrl (예: docent/docent_default.jpg) 또는 art_image 사용
+        if ($uploadedImagePath) {
+            $imageFilePath = $uploadedImagePath;
+        } else {
+            $imageFilePath = $this->getArtImageFilePath($art, $avatarImageUrl);
+        }
+
         if (!is_file($imageFilePath)) {
             throw new \Exception('Artwork image file not found: ' . $imageFilePath);
         }
@@ -233,7 +244,7 @@ class DocentModel
             return $fullPath;
         }
 
-        // 2) /media/... 혹은 상대 경로가 들어온 경우
+        // 2) /media/... 혹은 상대 경로가 들어온 경우 (예: docent/docent_default.jpg)
         if ($avatarImageUrl && !preg_match('#^https?://#', $avatarImageUrl)) {
             $relative = preg_replace('#^/media/#', '', $avatarImageUrl);
             $fullPath = $this->mediaBaseDir . '/' . ltrim($relative, '/');

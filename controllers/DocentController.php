@@ -13,7 +13,7 @@ use OpenApi\Annotations as OA;
  */
 class DocentController
 {
-     /** @var DocentModel */
+    /** @var DocentModel */
     private $service;
 
     /** @var AuthMiddleware */
@@ -33,6 +33,13 @@ class DocentController
      * 작품에 대한 도슨트 음성(mp3) 또는 영상(mp4)을 생성합니다.
      * - type=audio: Google TTS로 mp3만 생성 (docent_audio_path 저장)
      * - type=video: Google TTS로 mp3 생성 후, Hedra API로 영상을 생성하여 mp4 저장 (audio+video 모두 저장)
+     *
+     * 공통 파라미터:
+     * - docent_script: 도슨트로 사용할 텍스트
+     * - art_name: 파일명에 넣을 작품명
+     *
+     * type=video 일 때만 이미지 파일(donent_img)을 multipart/form-data로 업로드합니다.
+     * docent_img 가 비어 있으면 media/docent/docent_default.jpg 를 기본 이미지로 사용합니다.
      * ",
      *     tags={"Docent"},
      *     security={{"bearerAuth":{}}},
@@ -47,35 +54,30 @@ class DocentController
      *         name="type",
      *         in="query",
      *         required=false,
-     *         description="audio 또는 video (querystring 으로도 전달 가능, body에 있으면 body 우선)",
+     *         description="audio 또는 video (기본값 audio)",
      *         @OA\Schema(type="string", enum={"audio","video"})
      *     ),
      *     @OA\RequestBody(
      *         required=false,
-     *         @OA\JsonContent(
-     *             @OA\Property(
-     *                 property="type",
-     *                 type="string",
-     *                 enum={"audio","video"},
-     *                 description="audio: TTS mp3 생성, video: Hedra로 아바타 영상 생성",
-     *                 example="audio"
-     *             ),
-     *             @OA\Property(
-     *                 property="script",
-     *                 type="string",
-     *                 description="도슨트로 사용할 텍스트. 없으면 art_docent → art_description 순서로 사용"
-     *             ),
-     *             @OA\Property(
-     *                 property="avatar_image_url",
-     *                 type="string",
-     *                 description="아바타 이미지 URL. 없으면 작품 대표 이미지(art_image)를 사용.
-     * - http(s):// 로 시작하면 서버에서 다운로드해서 사용
-     * - /media/... 형식이면 서버 로컬 media 디렉토리 기준으로 사용"
-     *             ),
-     *             @OA\Property(
-     *                 property="art_name",
-     *                 type="string",
-     *                 description="파일명에 포함할 작품명. 없으면 art_title 사용"
+     *         @OA\MediaType(
+     *             mediaType="multipart/form-data",
+     *             @OA\Schema(
+     *                 @OA\Property(
+     *                     property="docent_script",
+     *                     type="string",
+     *                     description="도슨트 텍스트"
+     *                 ),
+     *                 @OA\Property(
+     *                     property="art_name",
+     *                     type="string",
+     *                     description="파일명에 넣을 작품명"
+     *                 ),
+     *                 @OA\Property(
+     *                     property="docent_img",
+     *                     type="string",
+     *                     format="binary",
+     *                     description="동영상용 아바타 이미지 (type=video일 때만 사용)"
+     *                 )
      *             )
      *         )
      *     ),
@@ -107,23 +109,53 @@ class DocentController
     {
         header('Content-Type: application/json; charset=utf-8');
 
-        // 필요하면 권한 체크 (콘솔 전용이면 requireAdmin 등으로 변경)
-        // $this->auth->requireAdmin();
-        // $this->auth->requireAuth();
+        // $this->auth->requireAuth(); // 필요 시 활성화
 
         $artId = (int)($params['id'] ?? 0);
 
+        // JSON 바디도 같이 지원 (audio 옛 요청 호환용)
         $rawBody = file_get_contents('php://input');
-        $body    = $rawBody ? json_decode($rawBody, true) : [];
-        if (!is_array($body)) {
-            $body = [];
+        $body    = [];
+        if ($rawBody) {
+            $decoded = json_decode($rawBody, true);
+            if (is_array($decoded)) {
+                $body = $decoded;
+            }
         }
 
-        // type은 querystring 우선, 없으면 body, 둘 다 없으면 audio 기본
-        $type           = $_GET['type']             ?? ($body['type']             ?? 'audio');
-        $script         = $body['script']           ?? null;
-        $avatarImageUrl = $body['avatar_image_url'] ?? null;
-        $artName        = $body['art_name']         ?? null;
+        // type: query → POST → JSON → 기본 audio
+        $type = $_GET['type']
+            ?? ($_POST['type'] ?? ($body['type'] ?? 'audio'));
+        $type = ($type === 'video') ? 'video' : 'audio';
+
+        // 공통 파라미터
+        // 우선순위: multipart/form-data(docent_script) → JSON(docent_script) → JSON(script, 기존 이름)
+        $script =
+            $_POST['docent_script']
+            ?? ($body['docent_script'] ?? ($body['script'] ?? null));
+
+        $artName =
+            $_POST['art_name']
+            ?? ($body['art_name'] ?? null);
+
+        // video 모드일 때만 이미지 처리
+        $uploadedImagePath = null;
+        $avatarImageUrl    = null; // /media/... or docent/... 형식
+
+        if ($type === 'video') {
+            if (
+                isset($_FILES['docent_img']) &&
+                $_FILES['docent_img']['error'] === UPLOAD_ERR_OK
+            ) {
+                // 업로드된 파일 실제 경로 (임시)
+                $uploadedImagePath = $_FILES['docent_img']['tmp_name'];
+            } else {
+                // 업로드 이미지가 없으면 기본 이미지 사용
+                // media/docent/docent_default.jpg  ← 실제 파일은
+                // backend/media/docent/docent_default.jpg 에 있어야 함
+                $avatarImageUrl = 'docent/docent_default.jpg';
+            }
+        }
 
         try {
             $result = $this->service->generateDocent(
@@ -131,7 +163,8 @@ class DocentController
                 $type,
                 $script,
                 $avatarImageUrl,
-                $artName
+                $artName,
+                $uploadedImagePath // audio 일 때는 null
             );
 
             $response = [
@@ -197,9 +230,6 @@ class DocentController
     public function show($params): void
     {
         header('Content-Type: application/json; charset=utf-8');
-
-        // 필요시 권한 체크
-        // $this->auth->requireAuth();
 
         $artId = (int)($params['id'] ?? 0);
 
