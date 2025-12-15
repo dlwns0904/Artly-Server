@@ -1,4 +1,18 @@
-RewriteEngine On
-RewriteCond %{REQUEST_FILENAME} !-f
-RewriteCond %{REQUEST_FILENAME} !-d
-RewriteRule ^ index.php [QSA,L]
+# 1. 라우팅 설정 (기존 코드)
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    
+    # 요청한 경로에 실제 파일(!-f)이나 폴더(!-d)가 있으면
+    # index.php로 보내지 않고 그 파일을 바로 보여줌 (이미지 등)
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteRule ^ index.php [QSA,L]
+</IfModule>
+
+# 2. CORS 헤더 설정 (추가한 코드)
+<IfModule mod_headers.c>
+    # 위에서 통과된 파일 중, 이미지 확장자일 경우에만 헤더를 붙임
+    <FilesMatch "\.(jpg|jpeg|png|gif|webp|svg)$">
+        Header set Access-Control-Allow-Origin "*"
+    </FilesMatch>
+</IfModule>

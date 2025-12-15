@@ -2,9 +2,11 @@ vendor/
 .env
 vendor_backup_*
 
+.env.save
 
 config.php
 secrets/
 
 *.png
 *.jpg
+media/

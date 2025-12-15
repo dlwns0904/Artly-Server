@@ -1581,6 +1581,166 @@
                 ]
             }
         },
+        "/api/docents/{id}": {
+            "get": {
+                "tags": [
+                    "Docent"
+                ],
+                "summary": "작품 도슨트(음성/영상) 조회",
+                "description": "APIServer_art.docent_audio_path / docent_video_path를 기반으로 도슨트 파일 경로를 반환합니다.",
+                "operationId": "2480400aaa169bd69bc37a27ebe62a54",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "작품 ID (APIServer_art.id)",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "도슨트 정보 반환",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "status": {
+                                            "type": "string",
+                                            "example": "success"
+                                        },
+                                        "docent_audio_url": {
+                                            "type": "string",
+                                            "example": "/media/docent/mp3/1_작품명_1710000000.mp3",
+                                            "nullable": true
+                                        },
+                                        "docent_video_url": {
+                                            "type": "string",
+                                            "example": "/media/docent/video/1_작품명_1710000000.mp4",
+                                            "nullable": true
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "도슨트가 없거나 작품을 찾을 수 없음"
+                    },
+                    "500": {
+                        "description": "내부 서버 오류"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            },
+            "post": {
+                "tags": [
+                    "Docent"
+                ],
+                "summary": "작품 도슨트 생성 (TTS mp3 또는 아바타 영상)",
+                "description": "\n     * 작품에 대한 도슨트 음성(mp3) 또는 영상(mp4)을 생성합니다.\n     * - type=audio: Google TTS로 mp3만 생성 (docent_audio_path 저장)\n     * - type=video: Google TTS로 mp3 생성 후, Hedra API로 영상을 생성하여 mp4 저장 (audio+video 모두 저장)\n     *\n     * 공통 파라미터:\n     * - docent_script: 도슨트로 사용할 텍스트\n     * - art_name: 파일명에 넣을 작품명\n     *\n     * type=video 일 때만 이미지 파일(donent_img)을 multipart/form-data로 업로드합니다.\n     * docent_img 가 비어 있으면 media/docent/docent_default.jpg 를 기본 이미지로 사용합니다.\n     * ",
+                "operationId": "d847595b0ea863e095eb93fe7fe07328",
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "description": "작품 ID (APIServer_art.id)",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "type",
+                        "in": "query",
+                        "description": "audio 또는 video (기본값 audio)",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "audio",
+                                "video"
+                            ]
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": false,
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "properties": {
+                                    "docent_script": {
+                                        "description": "도슨트 텍스트",
+                                        "type": "string"
+                                    },
+                                    "art_name": {
+                                        "description": "파일명에 넣을 작품명",
+                                        "type": "string"
+                                    },
+                                    "docent_img": {
+                                        "description": "동영상용 아바타 이미지 (type=video일 때만 사용)",
+                                        "type": "string",
+                                        "format": "binary"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "도슨트 생성 성공",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "status": {
+                                            "type": "string",
+                                            "example": "success"
+                                        },
+                                        "mode": {
+                                            "type": "string",
+                                            "example": "audio"
+                                        },
+                                        "docent_audio_url": {
+                                            "type": "string",
+                                            "example": "/media/docent/mp3/1_작품명_1710000000.mp3",
+                                            "nullable": true
+                                        },
+                                        "docent_video_url": {
+                                            "type": "string",
+                                            "example": "/media/docent/video/1_작품명_1710000000.mp4",
+                                            "nullable": true
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "작품을 찾을 수 없음"
+                    },
+                    "500": {
+                        "description": "내부 서버 오류 또는 외부 API 오류"
+                    }
+                },
+                "security": [
+                    {
+                        "bearerAuth": []
+                    }
+                ]
+            }
+        },
         "/api/exhibitions": {
             "get": {
                 "tags": [
@@ -4998,22 +5158,25 @@
                 "tags": [
                     "User"
                 ],
-                "summary": "관리자 측에서 관리하는 갤러리/전시회/작품의 좋아요 목록 조회",
-                "description": "타입(gallery, exhibition, art)별로 좋아요 목록을 조회하고, 선택적으로 검색어로 필터링합니다.",
+                "summary": "관리자(Console)가 관리하는 콘텐츠의 좋아요 목록 조회",
+                "description": "특정 관리자(console_user_id)가 소유한 갤러리, 전시회, 작품에 달린 좋아요 목록을 조회합니다. liked_type에 따라 반환되는 상세 객체(gallery, exhibition, art)가 달라집니다.",
                 "operationId": "55554f27cd842c10062ff320b18988e9",
                 "parameters": [
                     {
-                        "name": "user_name",
+                        "name": "console_user_id",
                         "in": "query",
-                        "description": "사용자 이름으로 검색",
+                        "description": "관리자 ID (이 ID가 관리하는 갤러리/전시/작품에 대한 좋아요만 필터링하여 조회)",
+                        "required": true,
                         "schema": {
-                            "type": "string"
+                            "type": "integer",
+                            "example": 1
                         }
                     },
                     {
                         "name": "liked_type",
                         "in": "query",
-                        "description": "좋아요 구분 ('gallery', 'exhibition', 'art')",
+                        "description": "조회할 좋아요 대상 타입 ('gallery', 'exhibition', 'art')",
+                        "required": true,
                         "schema": {
                             "type": "string",
                             "enum": [
@@ -5026,7 +5189,8 @@
                     {
                         "name": "search",
                         "in": "query",
-                        "description": "[선택] 특정 키워드로 조회된 목록을 필터링합니다.",
+                        "description": "[선택] 검색어 (사용자 이름 또는 콘텐츠의 제목으로 필터링)",
+                        "required": false,
                         "schema": {
                             "type": "string"
                         }
@@ -5040,36 +5204,102 @@
                                 "schema": {
                                     "type": "array",
                                     "items": {
+                                        "description": "좋아요 정보 객체",
                                         "properties": {
-                                            "like_id": {
+                                            "id": {
                                                 "description": "좋아요 ID",
-                                                "type": "integer",
-                                                "example": 1
+                                                "type": "integer"
                                             },
                                             "user_id": {
-                                                "description": "사용자 ID",
+                                                "description": "좋아요를 누른 사용자 ID",
+                                                "type": "integer"
+                                            },
+                                            "gallery_id": {
+                                                "description": "대상 갤러리 ID (type=gallery일 때)",
                                                 "type": "integer",
-                                                "example": 10
+                                                "nullable": true
                                             },
-                                            "user_name": {
-                                                "description": "사용자 이름",
-                                                "type": "string",
-                                                "example": "홍길동"
-                                            },
-                                            "liked_item_id": {
-                                                "description": "좋아요 대상 아이템의 ID",
+                                            "exhibition_id": {
+                                                "description": "대상 전시 ID (type=exhibition일 때)",
                                                 "type": "integer",
-                                                "example": 5
+                                                "nullable": true
                                             },
-                                            "liked_item_title": {
-                                                "description": "좋아요 대상 아이템의 제목",
-                                                "type": "string",
-                                                "example": "빛의 갤러리"
+                                            "art_id": {
+                                                "description": "대상 작품 ID (type=art일 때)",
+                                                "type": "integer",
+                                                "nullable": true
                                             },
-                                            "created_at": {
-                                                "description": "좋아요 누른 시간",
+                                            "create_dtm": {
+                                                "description": "좋아요 생성 일시",
                                                 "type": "string",
                                                 "format": "date-time"
+                                            },
+                                            "user": {
+                                                "description": "좋아요를 누른 사용자 상세 정보",
+                                                "properties": {
+                                                    "id": {
+                                                        "type": "integer"
+                                                    },
+                                                    "user_name": {
+                                                        "type": "string"
+                                                    },
+                                                    "user_email": {
+                                                        "type": "string"
+                                                    },
+                                                    "user_image": {
+                                                        "type": "string",
+                                                        "nullable": true
+                                                    }
+                                                },
+                                                "type": "object"
+                                            },
+                                            "gallery": {
+                                                "description": "갤러리 상세 정보 (liked_type='gallery'일 때만 존재)",
+                                                "properties": {
+                                                    "id": {
+                                                        "type": "integer"
+                                                    },
+                                                    "gallery_name": {
+                                                        "type": "string"
+                                                    },
+                                                    "gallery_image": {
+                                                        "type": "string"
+                                                    }
+                                                },
+                                                "type": "object",
+                                                "nullable": true
+                                            },
+                                            "exhibition": {
+                                                "description": "전시회 상세 정보 (liked_type='exhibition'일 때만 존재)",
+                                                "properties": {
+                                                    "id": {
+                                                        "type": "integer"
+                                                    },
+                                                    "exhibition_title": {
+                                                        "type": "string"
+                                                    },
+                                                    "exhibition_poster": {
+                                                        "type": "string"
+                                                    }
+                                                },
+                                                "type": "object",
+                                                "nullable": true
+                                            },
+                                            "art": {
+                                                "description": "작품 상세 정보 (liked_type='art'일 때만 존재)",
+                                                "properties": {
+                                                    "id": {
+                                                        "type": "integer"
+                                                    },
+                                                    "art_title": {
+                                                        "type": "string"
+                                                    },
+                                                    "art_image": {
+                                                        "type": "string"
+                                                    }
+                                                },
+                                                "type": "object",
+                                                "nullable": true
                                             }
                                         },
                                         "type": "object"
@@ -5079,13 +5309,13 @@
                         }
                     },
                     "400": {
-                        "description": "필수 파라미터 누락 또는 잘못된 타입"
+                        "description": "필수 파라미터(liked_type) 누락 또는 잘못된 값"
                     },
                     "401": {
-                        "description": "인증 실패 (관리자 권한 필요)"
+                        "description": "인증 실패"
                     },
                     "500": {
-                        "description": "서버 오류"
+                        "description": "서버 내부 오류"
                     }
                 },
                 "security": [
@@ -5125,6 +5355,10 @@
         {
             "name": "Chat",
             "description": "챗봇 관련 API"
+        },
+        {
+            "name": "Docent",
+            "description": "작품 도슨트(음성/영상) 생성 및 조회 API"
         },
         {
             "name": "Exhibition",
